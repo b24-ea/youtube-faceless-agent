@@ -6,38 +6,38 @@ class ContentAgent:
         self.client = client
         
         self.niche_prompts = {
-            "mysterious_events": "gizemli kayıp olayları, açıklanamayan fenomenler, terk edilmiş yerler",
-            "conspiracy_theories": "hükümet sırları, tarihin karanlık yüzü, gizlenen gerçekler",
-            "disaster_scenarios": "simülasyon teorisi, paralel evren, AI takeover, felaket senaryoları",
-            "leaked_footage": "sızdırılmış belgeler, gizli kayıtlar, whistleblower hikayeleri"
+            "mysterious_events": "mysterious disappearances, unexplained phenomena, abandoned places",
+            "conspiracy_theories": "government secrets, dark history, hidden truths",
+            "disaster_scenarios": "simulation theory, parallel universe, AI takeover, disaster scenarios",
+            "leaked_footage": "leaked documents, secret recordings, whistleblower stories"
         }
 
     def generate_video(self, niche: str, analytics_data: dict) -> dict:
-        # Analytics'ten öğrendiklerini prompt'a ekle
         performance_insight = self._get_performance_insight(analytics_data)
         niche_description = self.niche_prompts.get(niche, self.niche_prompts["mysterious_events"])
         
-        prompt = f"""Sen viral YouTube videoları için içerik üreten bir uzmansın.
-        
-Niş: {niche_description}
-Dil: İngilizce (global kitle)
-Format: Faceless video (yüz göstermeden, sadece görsel + seslendirme)
+        prompt = f"""You are an expert at creating viral YouTube faceless video content.
 
-Performans verilerinden öğrendiklerimiz:
+Niche: {niche_description}
+Language: English (global audience)
+Format: Faceless video (visuals + voiceover only)
+
+Performance insights:
 {performance_insight}
 
-Aşağıdaki formatta bir video içeriği üret:
+Generate video content in this EXACT JSON format, use only these exact keys:
 
-1. BAŞLIK: Merak uyandıran, tıklanma oranı yüksek (50 karakter max)
-2. HOOK (ilk 15 saniye): İzleyiciyi anında yakalayacak açılış cümlesi
-3. SCRIPT: 3-4 dakikalık video scripti (bölümlere ayır)
-4. GÖRSEL AÇIKLAMALAR: Her bölüm için hangi görsellerin kullanılacağı
-5. TAGS: 15 adet YouTube SEO tag
-6. DESCRIPTION: 200 kelimelik video açıklaması
-7. THUMBNAIL KAVRAMI: Thumbnail'de ne olmalı
+{{
+  "title": "compelling title under 60 chars",
+  "hook": "opening line that grabs attention in first 15 seconds",
+  "script": "full 3-4 minute video script divided into sections",
+  "visual_descriptions": ["visual 1 description", "visual 2 description", "visual 3 description", "visual 4 description"],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"],
+  "description": "200 word YouTube video description with keywords",
+  "thumbnail_concept": "what should appear on the thumbnail"
+}}
 
-Önemli: Gerçekmiş gibi hissettiren ama eğlenceli, dramatik bir ton kullan.
-Yanıtını JSON formatında ver."""
+IMPORTANT: Return ONLY the JSON object, no other text, no markdown backticks."""
 
         response = self.client.messages.create(
             model="claude-sonnet-4-5",
@@ -45,41 +45,25 @@ Yanıtını JSON formatında ver."""
             messages=[{"role": "user", "content": prompt}]
         )
         
-        # JSON parse et
-        content = response.content[0].text
+        content = response.content[0].text.strip()
         
-        # JSON bloğunu temizle
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
+        if "```" in content:
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.split("```")[0].strip()
         
         try:
             video_data = json.loads(content)
-
-# Anahtar isimlerini normalize et
-if 'BAŞLIK' in video_data and 'title' not in video_data:
-    video_data['title'] = video_data['BAŞLIK']
-if 'HOOK' in video_data and 'hook' not in video_data:
-    video_data['hook'] = video_data['HOOK']
-if 'SCRIPT' in video_data and 'script' not in video_data:
-    video_data['script'] = video_data['SCRIPT']
-if 'TAGS' in video_data and 'tags' not in video_data:
-    video_data['tags'] = video_data['TAGS']
-if 'DESCRIPTION' in video_data and 'description' not in video_data:
-    video_data['description'] = video_data['DESCRIPTION']
-if 'GÖRSEL AÇIKLAMALAR' in video_data and 'visual_descriptions' not in video_data:
-    video_data['visual_descriptions'] = video_data['GÖRSEL AÇIKLAMALAR']
         except:
-            # Parse edilemezse manuel oluştur
             video_data = {
                 "title": "The Mystery Nobody Talks About",
-                "hook": "What you're about to see will change everything you think you know...",
+                "hook": "What you are about to see will change everything you think you know...",
                 "script": content,
-                "visual_descriptions": ["Dark mysterious atmosphere", "Old documents", "Strange symbols"],
-                "tags": ["mystery", "conspiracy", "unexplained", "secrets", "viral"],
-                "description": "Exploring the mysteries that mainstream media won't cover.",
-                "thumbnail_concept": "Dark background with glowing eye symbol"
+                "visual_descriptions": ["Dark mysterious atmosphere", "Old documents", "Strange symbols", "Aerial view"],
+                "tags": ["mystery", "conspiracy", "unexplained", "secrets", "viral", "shocking", "hidden", "truth", "exposed", "real"],
+                "description": "Exploring the mysteries that mainstream media will not cover. Subscribe for weekly mystery content.",
+                "thumbnail_concept": "Dark background with glowing eye symbol and red text"
             }
         
         video_data["niche"] = niche
@@ -87,17 +71,15 @@ if 'GÖRSEL AÇIKLAMALAR' in video_data and 'visual_descriptions' not in video_d
 
     def _get_performance_insight(self, analytics_data: dict) -> str:
         if not analytics_data or analytics_data.get("status") == "no_data":
-            return "Henüz yeterli veri yok. Genel viral trendleri takip et."
+            return "No data yet. Use general viral trends."
         
         insights = []
         
         if analytics_data.get("best_performing_type"):
-            insights.append(f"En çok izlenen içerik türü: {analytics_data['best_performing_type']}")
+            insights.append(f"Best content type: {analytics_data['best_performing_type']}")
         
         if analytics_data.get("avg_watch_time"):
-            insights.append(f"Ortalama izlenme süresi: {analytics_data['avg_watch_time']} saniye")
+            insights.append(f"Average watch time: {analytics_data['avg_watch_time']} seconds")
         
         if analytics_data.get("top_tags"):
-            insights.append(f"En iyi performans gösteren taglar: {', '.join(analytics_data['top_tags'])}")
-            
-        return "\n".join(insights) if insights else "İlk videolar — genel viral format kullan."
+            insights.append(f"Best performing tags: {', '.join(
