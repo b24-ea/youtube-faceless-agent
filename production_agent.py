@@ -57,7 +57,7 @@ class ProductionAgent:
                 )
 
                 response = self.openai_client.images.generate(
-                    model="dall-e-3",
+                    model="gpt-image-1",
                     prompt=dalle_prompt,
                     size="1792x1024",
                     quality="standard",
