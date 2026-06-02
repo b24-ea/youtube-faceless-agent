@@ -40,7 +40,7 @@ class YouTubeAgent:
         # 3. Script üret
         print("\n✍️  Script üretiliyor...")
         video_data = self.content_agent.generate_video(best_niche, analytics_data)
-        print(f"✅ Başlık: {video_data['title']}")
+        print(f"✅ Başlık: {video_data.get('title', video_data.get('BAŞLIK', 'Video üretildi'))}")
 
         # 4. Video üret
         print("\n🎬 Video üretiliyor...")
