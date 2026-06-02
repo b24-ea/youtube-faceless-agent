@@ -2,36 +2,32 @@ import os
 import asyncio
 import requests
 import edge_tts
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
-import textwrap
-from openai import OpenAI
+import subprocess
 
 
 class ProductionAgent:
     def __init__(self):
         self.output_dir = "output"
         self.voice = "en-US-AriaNeural"
-        self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self.pexels_api_key = os.environ.get("PEXELS_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def create_video(self, video_data: dict) -> str:
+    def create_video(self, video_data):
         print("  🎙️  Generating voiceover...")
         audio_path = self._generate_audio(video_data["script"])
 
-        print("  🖼️  Generating AI images with DALL-E 3...")
-        image_paths = self._generate_images(video_data["visual_descriptions"], video_data["title"])
+        print("  🎬 Downloading stock video clips...")
+        clip_paths = self._download_video_clips(video_data["visual_descriptions"], video_data["title"])
 
-        print("  🎬 Combining video...")
-        video_path = self._combine_to_video(audio_path, image_paths, video_data)
+        print("  🎞️  Combining video...")
+        video_path = self._combine_to_video(audio_path, clip_paths)
 
         return video_path
 
-    def _generate_audio(self, script: str) -> str:
+    def _generate_audio(self, script):
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
-
-        script = str(script)[:4000]
+        script = str(script)[:4500]
         audio_path = f"{self.output_dir}/audio.mp3"
 
         async def _tts():
@@ -41,70 +37,115 @@ class ProductionAgent:
         asyncio.run(_tts())
         return audio_path
 
-    def _generate_images(self, visual_descriptions: list, title: str) -> list:
-        image_paths = []
+    def _download_video_clips(self, visual_descriptions, title):
+        clip_paths = []
+        queries = self._build_search_queries(visual_descriptions, title)
 
-        for i, description in enumerate(visual_descriptions[:4]):
-            img_path = f"{self.output_dir}/frame_{i}.png"
-            try:
-                print(f"    🎨 Generating image {i+1}/4...")
-                
-                dalle_prompt = (
-                    f"Cinematic, dark and mysterious atmosphere. "
-                    f"{description}. "
-                    f"High quality, dramatic lighting, photorealistic, "
-                    f"documentary style, no text, no watermarks."
-                )
+        for i, query in enumerate(queries[:6]):
+            clip_path = f"{self.output_dir}/clip_{i}.mp4"
+            success = self._fetch_pexels_video(query, clip_path)
+            if success:
+                print(f"    ✅ Clip {i+1} downloaded: {query}")
+                clip_paths.append(clip_path)
+            else:
+                print(f"    ⚠️  No clip found for: {query}, trying fallback...")
+                fallback_success = self._fetch_pexels_video("dark mystery forest night", clip_path)
+                if fallback_success:
+                    clip_paths.append(clip_path)
 
-                response = self.openai_client.images.generate(
-                    model="gpt-image-1",
-                    prompt=dalle_prompt,
-                    size="1792x1024",
-                    quality="standard",
-                    n=1
-                )
+        return clip_paths
 
-                image_url = response.data[0].url
-                img_response = requests.get(image_url)
-                img = Image.open(BytesIO(img_response.content))
-                img = img.resize((1920, 1080), Image.LANCZOS)
-                img.save(img_path)
-                print(f"    ✅ Image {i+1} generated")
+    def _build_search_queries(self, visual_descriptions, title):
+        queries = []
+        keywords = [
+            "dark mystery", "abandoned building", "foggy forest night",
+            "dramatic sky storm", "empty road night", "old documents"
+        ]
+        for i, desc in enumerate(visual_descriptions[:4]):
+            words = desc.lower().split()
+            useful = [w for w in words if len(w) > 4][:3]
+            if useful:
+                queries.append(" ".join(useful))
+            else:
+                queries.append(keywords[i % len(keywords)])
+        queries += keywords[:2]
+        return queries
 
-            except Exception as e:
-                print(f"    ⚠️  DALL-E failed for image {i+1}: {e}, using fallback")
-                self._create_fallback_image(description, img_path, i)
+    def _fetch_pexels_video(self, query, save_path):
+        try:
+            headers = {"Authorization": self.pexels_api_key}
+            params = {"query": query, "per_page": 5, "orientation": "landscape"}
+            response = requests.get(
+                "https://api.pexels.com/videos/search",
+                headers=headers,
+                params=params,
+                timeout=15
+            )
+            data = response.json()
+            videos = data.get("videos", [])
 
-            image_paths.append(img_path)
+            if not videos:
+                return False
 
-        return image_paths
+            video = videos[0]
+            video_files = video.get("video_files", [])
+            hd_files = [f for f in video_files if f.get("quality") in ["hd", "sd"] and f.get("width", 0) >= 1280]
+            if not hd_files:
+                hd_files = video_files
 
-    def _create_fallback_image(self, description: str, path: str, index: int):
-        colors = [(10, 10, 30), (20, 5, 5), (5, 20, 5), (15, 15, 15)]
-        bg_color = colors[index % len(colors)]
-        img = Image.new("RGB", (1920, 1080), bg_color)
-        draw = ImageDraw.Draw(img)
-        wrapped = textwrap.fill(description, width=50)
-        draw.text((960, 540), wrapped, fill=(200, 200, 200), anchor="mm")
-        img.save(path)
+            if not hd_files:
+                return False
 
-    def _combine_to_video(self, audio_path: str, image_paths: list, video_data: dict) -> str:
+            video_url = hd_files[0]["link"]
+            video_response = requests.get(video_url, timeout=60, stream=True)
+
+            with open(save_path, "wb") as f:
+                for chunk in video_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            return True
+
+        except Exception as e:
+            print(f"    Pexels error: {e}")
+            return False
+
+    def _combine_to_video(self, audio_path, clip_paths):
         video_path = f"{self.output_dir}/final_video.mp4"
-        duration_per_image = 30
-        n = len(image_paths)
 
-        inputs = " ".join([f"-loop 1 -t {duration_per_image} -i {p}" for p in image_paths])
-        filter_parts = "".join([f"[{i}:v]scale=1920:1080,setsar=1[v{i}];" for i in range(n)])
-        concat_inputs = "".join([f"[v{i}]" for i in range(n)])
-        filter_complex = f"{filter_parts}{concat_inputs}concat=n={n}:v=1:a=0[outv]"
+        if not clip_paths:
+            print("  ⚠️  No clips available!")
+            return None
 
-        cmd = (
-            f"ffmpeg -y {inputs} "
-            f"-i {audio_path} "
-            f'-filter_complex "{filter_complex}" '
-            f"-map [outv] -map {n}:a "
-            f"-c:v libx264 -c:a aac -shortest {video_path}"
+        # Her klibi 1920x1080'e normalize et
+        normalized = []
+        for i, clip in enumerate(clip_paths):
+            norm_path = f"{self.output_dir}/norm_{i}.mp4"
+            cmd = (
+                f"ffmpeg -y -i {clip} "
+                f"-vf scale=1920:1080:force_original_aspect_ratio=decrease,"
+                f"pad=1920:1080:(ow-iw)/2:(oh-ih)/2 "
+                f"-c:v libx264 -an -t 30 {norm_path}"
+            )
+            os.system(cmd)
+            if os.path.exists(norm_path):
+                normalized.append(norm_path)
+
+        if not normalized:
+            return None
+
+        # Klipleri birleştir
+        concat_file = f"{self.output_dir}/concat.txt"
+        with open(concat_file, "w") as f:
+            for clip in normalized:
+                f.write(f"file '{os.path.abspath(clip)}'\n")
+
+        merged_path = f"{self.output_dir}/merged.mp4"
+        os.system(f"ffmpeg -y -f concat -safe 0 -i {concat_file} -c copy {merged_path}")
+
+        # Ses ekle
+        os.system(
+            f"ffmpeg -y -i {merged_path} -i {audio_path} "
+            f"-map 0:v -map 1:a -c:v copy -c:a aac -shortest {video_path}"
         )
 
-        os.system(cmd)
         return video_path
