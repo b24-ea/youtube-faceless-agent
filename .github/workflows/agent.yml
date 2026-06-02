@@ -1,0 +1,28 @@
+name: YouTube Faceless Agent
+
+on:
+  schedule:
+    - cron: '0 10 * * 1'  # Pazartesi 10:00
+    - cron: '0 10 * * 3'  # Çarşamba 10:00
+    - cron: '0 10 * * 5'  # Cuma 10:00
+  workflow_dispatch:        # Elle de tetiklenebilir
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        run: python agent.py
