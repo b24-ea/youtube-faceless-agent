@@ -1,8 +1,7 @@
 import os
 import json
-import pickle
+import base64
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -11,7 +10,8 @@ class PublishAgent:
     def __init__(self):
         self.scopes = [
             "https://www.googleapis.com/auth/youtube.upload",
-            "https://www.googleapis.com/auth/youtube"
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/yt-analytics.readonly"
         ]
 
     def upload(self, video_path: str, video_data: dict) -> str:
@@ -22,7 +22,7 @@ class PublishAgent:
                 "title": video_data.get("title", "Mysterious Video"),
                 "description": video_data.get("description", ""),
                 "tags": video_data.get("tags", []),
-                "categoryId": "22"  # People & Blogs
+                "categoryId": "22"
             },
             "status": {
                 "privacyStatus": "public",
@@ -43,19 +43,32 @@ class PublishAgent:
         )
         
         response = request.execute()
-        return response["id"]
+        video_id = response["id"]
+        print(f"  ✅ https://youtube.com/watch?v={video_id}")
+        return video_id
 
     def _get_youtube_client(self):
-        creds = None
-        client_secret = os.environ.get("YOUTUBE_CLIENT_SECRET")
+        token_b64 = os.environ.get("YOUTUBE_TOKEN")
         
-        # JSON string'i dosyaya yaz
-        with open("client_secret.json", "w") as f:
-            f.write(client_secret)
+        if not token_b64:
+            raise ValueError("YOUTUBE_TOKEN secret bulunamadı!")
         
-        flow = InstalledAppFlow.from_client_secrets_file(
-            "client_secret.json", self.scopes
+        try:
+            token_data = json.loads(base64.b64decode(token_b64).decode())
+        except Exception as e:
+            raise ValueError(f"Token parse hatası: {e}")
+        
+        creds = Credentials(
+            token=token_data.get("token"),
+            refresh_token=token_data.get("refresh_token"),
+            token_uri=token_data.get("token_uri", "https://oauth2.googleapis.com/token"),
+            client_id=token_data.get("client_id"),
+            client_secret=token_data.get("client_secret"),
+            scopes=token_data.get("scopes")
         )
-        creds = flow.run_local_server(port=0)
+        
+        # Token süresi dolmuşsa yenile
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
         
         return build("youtube", "v3", credentials=creds)
