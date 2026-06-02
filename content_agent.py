@@ -56,6 +56,20 @@ Yanıtını JSON formatında ver."""
         
         try:
             video_data = json.loads(content)
+
+# Anahtar isimlerini normalize et
+if 'BAŞLIK' in video_data and 'title' not in video_data:
+    video_data['title'] = video_data['BAŞLIK']
+if 'HOOK' in video_data and 'hook' not in video_data:
+    video_data['hook'] = video_data['HOOK']
+if 'SCRIPT' in video_data and 'script' not in video_data:
+    video_data['script'] = video_data['SCRIPT']
+if 'TAGS' in video_data and 'tags' not in video_data:
+    video_data['tags'] = video_data['TAGS']
+if 'DESCRIPTION' in video_data and 'description' not in video_data:
+    video_data['description'] = video_data['DESCRIPTION']
+if 'GÖRSEL AÇIKLAMALAR' in video_data and 'visual_descriptions' not in video_data:
+    video_data['visual_descriptions'] = video_data['GÖRSEL AÇIKLAMALAR']
         except:
             # Parse edilemezse manuel oluştur
             video_data = {
