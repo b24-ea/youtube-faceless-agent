@@ -33,7 +33,7 @@ class ProductionAgent:
         print("Final duration: " + str(round(audio_duration, 1)) + "s")
         music_path = self._get_background_music()
         segments = self._split_script_to_segments(video_data["script"], audio_duration)
-        clip_paths = self._download_clips_for_segments(segments)
+        clip_paths = self._download_clips_for_segments(segments, max_hailuo, is_shorts)
         video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts, music_path)
         return video_path
 
@@ -196,19 +196,18 @@ class ProductionAgent:
             print("Pixabay error: " + str(e))
             return False
 
-    def _download_clips_for_segments(self, segments):
+    def _download_clips_for_segments(self, segments, max_hailuo=30, is_shorts=False):
         clip_paths = []
         used_video_ids = set()
-        fallbacks = ["cute animals", "funny cartoon", "kids adventure", "colorful nature", "baby animals", "cute dogs"]
+        fallbacks = ["dark mystery forest", "abandoned building night", "foggy road", "dramatic storm", "dark corridor", "mysterious figure"]
         fallback_index = 0
         hailuo_count = 0
         for i, segment in enumerate(segments):
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
             query = self._extract_keywords(segment["text"])
             success = False
-            if hailuo_count < 3:
-                print("Segment " + str(i+1) + ": generating Hailuo anime clip...")
-                success = self._generate_hailuo_anime_clip(query, clip_path)
+            if hailuo_count < max_hailuo:
+                success = self._generate_hailuo_anime_clip(query, clip_path, is_shorts)
                 if success:
                     hailuo_count += 1
             if not success:
@@ -220,6 +219,7 @@ class ProductionAgent:
                 success = self._fetch_pixabay_video(fallback, clip_path, used_video_ids)
             if success:
                 clip_paths.append((clip_path, segment["duration"]))
+        print("Total clips: " + str(len(clip_paths)) + " (Hailuo: " + str(hailuo_count) + ")")
         return clip_paths
 
     def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None):
