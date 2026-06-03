@@ -67,7 +67,7 @@ class PublishAgent:
                 "vibrant colors, no text overlay, high quality, professional."
             )
             response = client.images.generate(
-                model="gpt_image-1",
+                model="gpt_image-2",
                 prompt=prompt,
                 size="1024x1024",
                 quality="auto",
