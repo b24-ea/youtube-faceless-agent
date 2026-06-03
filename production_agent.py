@@ -23,11 +23,23 @@ class ProductionAgent:
         script = str(script)[:4500]
         audio_path = os.path.join(self.output_dir, "audio.mp3")
 
-        async def _tts():
-            communicate = edge_tts.Communicate(script, self.voice)
-            await communicate.save(audio_path)
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            response = client.audio.speech.create(
+                model="tts-1-hd",
+                voice="onyx",
+                input=script
+            )
+            response.stream_to_file(audio_path)
+            print("OpenAI TTS audio generated")
+        except Exception as e:
+            print("OpenAI TTS error: " + str(e) + ", falling back to Edge-TTS")
+            async def _tts():
+                communicate = edge_tts.Communicate(script, self.voice)
+                await communicate.save(audio_path)
+            asyncio.run(_tts())
 
-        asyncio.run(_tts())
         return audio_path
 
     def _download_video_clips(self, visual_descriptions):
