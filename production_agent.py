@@ -8,10 +8,10 @@ import fal_client
 
 
 ELEVENLABS_VOICES = [
-    {"id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel"},
-    {"id": "AZnzlk1XvdvUeBnXmlld", "name": "Domi"},
-    {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Bella"},
-    {"id": "ErXwobaYiN019PkySvjV", "name": "Antoni"},
+    {"id": "TxGEqnHWrfWFTfGW9XjX", "name": "Josh"},
+    {"id": "VR6AewLTigWG4xSOukaG", "name": "Arnold"},
+    {"id": "pqHfZKP75CvOlQylNhV4", "name": "Bill"},
+    {"id": "nPczCjzI2devNBz1zQrb", "name": "Brian"},
 ]
 
 
