@@ -51,7 +51,7 @@ class ProductionAgent:
             headers = {"xi-api-key": self.elevenlabs_api_key, "Content-Type": "application/json"}
             body = {
                 "text": script,
-                "model_id": "eleven_monolingual_v1",
+                "model_id": "eleven_turbo_v2_5",
                 "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.7, "use_speaker_boost": True}
             }
             response = requests.post(url, json=body, headers=headers, timeout=60)
