@@ -77,6 +77,9 @@ class PublishAgent:
                 n=1
             )
             image_url = response.data[0].url
+            if not image_url or image_url == "None":
+    print("No image URL returned")
+    return None
             r = requests.get(image_url, timeout=30)
             img = Image.open(BytesIO(r.content))
             img = img.resize((1280, 720), Image.LANCZOS)
