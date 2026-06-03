@@ -131,21 +131,25 @@ class ProductionAgent:
         keywords = [w for w in words if w not in stop_words]
         return " ".join(keywords[:4]) if keywords else "cute animals adventure"
 
-    def _generate_hailuo_anime_clip(self, prompt, save_path):
+    def _generate_hailuo_anime_clip(self, prompt, save_path, is_shorts=False):
         try:
-            print("  Generating Hailuo anime clip...")
-            anime_prompt = "anime style, colorful, cute, funny, " + prompt + ". Studio Ghibli inspired, vibrant colors, smooth animation, kids friendly."
+            print("  Hailuo generating: " + prompt[:50])
+            style = "dark mysterious anime style, paranormal atmosphere, " if not is_shorts else "dark mystery anime style, shocking, "
+            anime_prompt = (
+                style + prompt +
+                ". Cinematic, dramatic lighting, dark atmosphere, high quality animation, smooth motion, no text."
+            )
             result = fal_client.subscribe(
                 "fal-ai/minimax/hailuo-02/standard/text-to-video",
                 arguments={"prompt": anime_prompt, "duration": 6, "resolution": "768p"}
             )
             if result and result.get("video", {}).get("url"):
                 video_url = result["video"]["url"]
-                r = requests.get(video_url, timeout=60, stream=True)
+                r = requests.get(video_url, timeout=120, stream=True)
                 with open(save_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                print("  Hailuo anime clip downloaded")
+                print("  Hailuo clip ready")
                 return True
         except Exception as e:
             print("  Hailuo error: " + str(e))
