@@ -18,6 +18,8 @@ class PublishAgent:
             "https://www.googleapis.com/auth/yt-analytics.readonly"
         ]
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
+        fal_key = os.environ.get("FAL_API_KEY", "")
+        os.environ["FAL_KEY"] = fal_key
 
     def upload(self, video_path, video_data, is_shorts=False):
         youtube = self._get_youtube_client()
@@ -55,49 +57,42 @@ class PublishAgent:
 
     def _create_thumbnail(self, video_data):
         try:
-            from openai import OpenAI
+            import fal_client
             thumbnail_path = os.path.join("output", "thumbnail.jpg")
-            concept = video_data.get("thumbnail_concept", "funny colorful cartoon")
-            title = video_data.get("title", "Fun Video")
-            client = OpenAI(api_key=self.openai_api_key)
+            concept = video_data.get("thumbnail_concept", "dark mysterious scene")
+            title = video_data.get("title", "Mystery Video")
             prompt = (
-                "YouTube thumbnail, bright colorful fun style, " +
+                "YouTube thumbnail, dark mysterious atmosphere, " +
                 concept +
-                ". Bold eye-catching design, Pixar style cartoon, "
-                "vibrant colors, no text overlay, high quality, professional."
+                ". Cinematic, dramatic lighting, high quality, professional, no text overlay."
             )
-            response = client.images.generate(
-                model="gpt_image-2",
-                prompt=prompt,
-                size="1024x1024",
-                quality="auto",
-                n=1
+            result = fal_client.subscribe(
+                "fal-ai/flux/schnell",
+                arguments={"prompt": prompt, "image_size": "landscape_16_9", "num_images": 1}
             )
-            image_url = response.data[0].url
-            if not image_url or image_url == "None":
-                print("No image URL returned")
-                return None
-            r = requests.get(image_url, timeout=30)
-            img = Image.open(BytesIO(r.content))
-            img = img.resize((1280, 720), Image.LANCZOS)
-            draw = ImageDraw.Draw(img)
-            words = title.upper().replace("#SHORTS", "").strip().split()
-            mid = max(1, len(words) // 2)
-            line1 = " ".join(words[:mid])
-            line2 = " ".join(words[mid:])
-            for offset in [(2, 2), (-2, -2), (2, -2), (-2, 2)]:
-                draw.text((642 + offset[0], 602 + offset[1]), line1, fill=(0, 0, 0), anchor="mm")
+            if result and result.get("images") and len(result["images"]) > 0:
+                image_url = result["images"][0]["url"]
+                r = requests.get(image_url, timeout=30)
+                img = Image.open(BytesIO(r.content))
+                img = img.resize((1280, 720), Image.LANCZOS)
+                draw = ImageDraw.Draw(img)
+                words = title.upper().replace("#SHORTS", "").strip().split()
+                mid = max(1, len(words) // 2)
+                line1 = " ".join(words[:mid])
+                line2 = " ".join(words[mid:])
+                for offset in [(2, 2), (-2, -2), (2, -2), (-2, 2)]:
+                    draw.text((642 + offset[0], 602 + offset[1]), line1, fill=(0, 0, 0), anchor="mm")
+                    if line2:
+                        draw.text((642 + offset[0], 662 + offset[1]), line2, fill=(0, 0, 0), anchor="mm")
+                draw.text((640, 600), line1, fill=(255, 50, 50), anchor="mm")
                 if line2:
-                    draw.text((642 + offset[0], 662 + offset[1]), line2, fill=(0, 0, 0), anchor="mm")
-            draw.text((640, 600), line1, fill=(255, 255, 0), anchor="mm")
-            if line2:
-                draw.text((640, 660), line2, fill=(255, 255, 255), anchor="mm")
-            img.save(thumbnail_path, "JPEG", quality=95)
-            print("Thumbnail created")
-            return thumbnail_path
+                    draw.text((640, 660), line2, fill=(255, 255, 255), anchor="mm")
+                img.save(thumbnail_path, "JPEG", quality=95)
+                print("Thumbnail created with fal.ai Flux")
+                return thumbnail_path
         except Exception as e:
             print("Thumbnail error: " + str(e))
-            return None
+        return None
 
     def _get_youtube_client(self):
         token_b64 = os.environ.get("YOUTUBE_TOKEN")
