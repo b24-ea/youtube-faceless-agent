@@ -3,6 +3,15 @@ import asyncio
 import requests
 import edge_tts
 import re
+import random
+
+
+ELEVENLABS_VOICES = [
+    {"id": "pNInz6obpgDQGcFmaJgB", "name": "Adam"},
+    {"id": "ErXwobaYiN019PkySvjV", "name": "Antoni"},
+    {"id": "VR6AewLTigWG4xSOukaG", "name": "Arnold"},
+    {"id": "onwK4e9ZLuTAKqWW03F9", "name": "Daniel"},
+]
 
 
 class ProductionAgent:
@@ -14,27 +23,37 @@ class ProductionAgent:
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def create_video(self, video_data):
-        audio_path = self._generate_audio(video_data["script"])
+    def create_video(self, video_data, is_shorts=False):
+        max_duration = 48 if is_shorts else 240
+        audio_path = self._generate_audio(video_data["script"], max_duration)
         audio_duration = self._get_audio_duration(audio_path)
+        audio_duration = min(audio_duration, max_duration)
+        print("Final duration: " + str(round(audio_duration, 1)) + "s")
         segments = self._split_script_to_segments(video_data["script"], audio_duration)
         dalle_prompts = video_data.get("dalle_prompts", [])
-        clip_paths = self._download_clips_for_segments(segments, dalle_prompts)
-        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration)
+        clip_paths = self._download_clips_for_segments(segments, dalle_prompts, is_shorts)
+        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts)
         return video_path
 
-    def _generate_audio(self, script):
+    def _generate_audio(self, script, max_duration=240):
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
-        script = str(script)[:4500]
+        script = str(script)
+        words_per_second = 2.5
+        max_words = int(max_duration * words_per_second)
+        words = script.split()
+        if len(words) > max_words:
+            script = " ".join(words[:max_words])
         audio_path = os.path.join(self.output_dir, "audio.mp3")
+        voice = random.choice(ELEVENLABS_VOICES)
+        print("Using voice: " + voice["name"])
         try:
-            url = "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB"
+            url = "https://api.elevenlabs.io/v1/text-to-speech/" + voice["id"]
             headers = {"xi-api-key": self.elevenlabs_api_key, "Content-Type": "application/json"}
             body = {
                 "text": script,
                 "model_id": "eleven_monolingual_v1",
-                "voice_settings": {"stability": 0.4, "similarity_boost": 0.8, "style": 0.5, "use_speaker_boost": True}
+                "voice_settings": {"stability": 0.35, "similarity_boost": 0.85, "style": 0.6, "use_speaker_boost": True}
             }
             response = requests.post(url, json=body, headers=headers, timeout=60)
             if response.status_code == 200:
@@ -59,7 +78,6 @@ class ProductionAgent:
             communicate = edge_tts.Communicate(script, self.voice)
             await communicate.save(audio_path)
         asyncio.run(_tts())
-        print("Edge-TTS fallback used")
         return audio_path
 
     def _get_audio_duration(self, audio_path):
@@ -82,7 +100,7 @@ class ProductionAgent:
             script = " ".join([str(v) for v in script.values()])
         script = str(script)
         sentences = re.split(r'(?<=[.!?])\s+', script)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
         segment_duration = 10.0
         num_segments = max(1, int(audio_duration / segment_duration))
         if not sentences:
@@ -123,14 +141,14 @@ class ProductionAgent:
             print("DALL-E error: " + str(e))
         return None
 
-    def _download_clips_for_segments(self, segments, dalle_prompts):
+    def _download_clips_for_segments(self, segments, dalle_prompts, is_shorts=False):
         clip_paths = []
         used_queries = set()
         dalle_index = 0
         for i, segment in enumerate(segments):
             clip_path_base = os.path.join(self.output_dir, "clip_" + str(i))
             clip_path_mp4 = clip_path_base + ".mp4"
-            if i % 2 == 1 and dalle_index < len(dalle_prompts):
+            if not is_shorts and i % 2 == 1 and dalle_index < len(dalle_prompts):
                 dalle_clip = self._generate_dalle_image(dalle_prompts[dalle_index], clip_path_base + ".jpg")
                 dalle_index += 1
                 if dalle_clip:
@@ -171,7 +189,7 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
@@ -179,9 +197,12 @@ class ProductionAgent:
         num_clips = len(clip_paths)
         duration_per_clip = max(5, int(audio_duration / num_clips))
         print("Clips: " + str(num_clips) + ", duration each: " + str(duration_per_clip) + "s")
+        width = "1080" if is_shorts else "1920"
+        height = "1920" if is_shorts else "1080"
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
-            vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            vf = "scale=" + width + ":" + height + ":force_original_aspect_ratio=decrease,"
+            vf += "pad=" + width + ":" + height + ":(ow-iw)/2:(oh-ih)/2"
             cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\" -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
             os.system(cmd)
             if os.path.exists(norm_path):

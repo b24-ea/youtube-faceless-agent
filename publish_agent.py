@@ -14,12 +14,14 @@ class PublishAgent:
             "https://www.googleapis.com/auth/yt-analytics.readonly"
         ]
 
-    def upload(self, video_path: str, video_data: dict) -> str:
+ def upload(self, video_path, video_data, is_shorts=False):
         youtube = self._get_youtube_client()
-        
+        title = video_data.get("title", "Mysterious Video")
+        if is_shorts and "#Shorts" not in title:
+            title = title + " #Shorts"
         body = {
             "snippet": {
-                "title": video_data.get("title", "Mysterious Video"),
+                "title": title,
                 "description": video_data.get("description", ""),
                 "tags": video_data.get("tags", []),
                 "categoryId": "22"
@@ -29,22 +31,11 @@ class PublishAgent:
                 "selfDeclaredMadeForKids": False
             }
         }
-        
-        media = MediaFileUpload(
-            video_path,
-            mimetype="video/mp4",
-            resumable=True
-        )
-        
-        request = youtube.videos().insert(
-            part="snippet,status",
-            body=body,
-            media_body=media
-        )
-        
+        media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True)
+        request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
         response = request.execute()
         video_id = response["id"]
-        print(f"  ✅ https://youtube.com/watch?v={video_id}")
+        print("Uploaded: https://youtube.com/watch?v=" + video_id)
         return video_id
 
     def _get_youtube_client(self):
