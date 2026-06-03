@@ -155,11 +155,11 @@ class ProductionAgent:
                 ". Studio Ghibli inspired, vibrant colors, smooth animation, kids friendly."
             )
             result = fal_client.subscribe(
-                "fal-ai/minimax-video/image-to-video",
+                "fal-ai/minimax/hailuo-02/standard/text-to-video",
                 arguments={
                     "prompt": anime_prompt,
-                    "duration": "6",
-                    "resolution": "720p"
+                    "duration": 6,
+                    "resolution": "768p"
                 }
             )
             if result and result.get("video", {}).get("url"):
@@ -170,6 +170,9 @@ class ProductionAgent:
                         f.write(chunk)
                 print("  Hailuo anime clip downloaded")
                 return True
+        except Exception as e:
+            print("  Hailuo error: " + str(e))
+        return False
         except Exception as e:
             print("  Hailuo error: " + str(e))
         return False
