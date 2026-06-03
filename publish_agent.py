@@ -70,7 +70,7 @@ class PublishAgent:
                 "vibrant colors, no text overlay, high quality, professional."
             )
             response = client.images.generate(
-                model="dall-e-3",
+                model="gpt-image-1",
                 prompt=prompt,
                 size="1792x1024",
                 quality="standard",
