@@ -164,7 +164,7 @@ class ProductionAgent:
             from openai import OpenAI
             client = OpenAI(api_key=self.openai_api_key)
             full_prompt = "Cute colorful cartoon illustration for kids, funny and happy, " + prompt + ". Bright colors, no text, no watermarks, Pixar style, fun."
-            response = client.images.generate(model="dall-e-3", prompt=full_prompt, size="1792x1024", quality="standard", n=1)
+            response = client.images.generate(model="gpt-image-1", prompt=full_prompt, size="1792x1024", quality="standard", n=1)
             image_url = response.data[0].url
             r = requests.get(image_url, timeout=30)
             with open(save_path, "wb") as f:
