@@ -214,31 +214,17 @@ class ProductionAgent:
     def _download_clips_for_segments(self, segments):
         clip_paths = []
         used_queries = set()
-
         for i, segment in enumerate(segments):
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
             query = self._extract_keywords(segment["text"])
-
             if query in used_queries:
                 query = query + " cinematic"
             used_queries.add(query)
-
-            kling_prompt = (
-                "Cinematic dark mysterious atmosphere, " + segment["text"][:200] +
-                ". Dramatic lighting, photorealistic, no text, no watermark."
-            )
-
-            print("Segment " + str(i+1) + ": trying Kling AI...")
-            if self._generate_kling_video(kling_prompt, clip_path):
-                clip_paths.append((clip_path, segment["duration"]))
-                continue
-
-            print("Segment " + str(i+1) + ": falling back to Pexels '" + query + "'")
+            print("Segment " + str(i+1) + ": searching Pexels '" + query + "'")
             if self._fetch_pexels_video(query, clip_path):
                 clip_paths.append((clip_path, segment["duration"]))
             elif self._fetch_pexels_video("dark mystery night", clip_path):
                 clip_paths.append((clip_path, segment["duration"]))
-
         return clip_paths
 
     def _fetch_pexels_video(self, query, save_path):
@@ -270,7 +256,7 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-    def _combine_to_video(self, audio_path, clip_paths):
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
