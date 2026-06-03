@@ -39,6 +39,8 @@ class ProductionAgent:
         segments = self._split_script_to_segments(video_data["script"], num_clips, clip_duration)
         clip_paths = self._download_clips_for_segments(segments, max_hailuo, is_shorts)
         video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts, music_path, clip_duration)
+        if video_path and os.path.exists(video_path):
+            video_path = self._add_subtitles(video_path, video_data["script"], audio_duration, is_shorts)
         return video_path
 
     def _generate_audio(self, script, max_duration=240):
@@ -94,16 +96,21 @@ class ProductionAgent:
     def _get_background_music(self):
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
-            urls = ["https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff3a5b.mp3", "https://cdn.pixabay.com/download/audio/2021/11/25/audio_5bdf8a4a6f.mp3"]
+            urls = [
+                "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff3a5b.mp3",
+                "https://cdn.pixabay.com/download/audio/2021/11/25/audio_5bdf8a4a6f.mp3",
+                "https://cdn.pixabay.com/download/audio/2022/03/15/audio_1e6ede8a71.mp3",
+            ]
             for url in urls:
                 try:
                     r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
                     if r.status_code == 200 and len(r.content) > 10000:
                         with open(music_path, "wb") as f:
                             f.write(r.content)
-                        print("Background music downloaded")
+                        print("Background music downloaded: " + str(len(r.content)) + " bytes")
                         return music_path
-                except Exception:
+                except Exception as ex:
+                    print("Music URL failed: " + str(ex))
                     continue
         except Exception as e:
             print("Music error: " + str(e))
@@ -130,16 +137,13 @@ class ProductionAgent:
         stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "from", "this", "that", "was", "were", "been", "have", "has", "had", "will", "would", "could", "should", "they", "them", "their", "there", "when", "where", "what", "which", "who", "how", "all", "its", "it", "is", "are", "be", "as", "into"}
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
         keywords = [w for w in words if w not in stop_words]
-        return " ".join(keywords[:4]) if keywords else "cute animals adventure"
+        return " ".join(keywords[:4]) if keywords else "dark mystery"
 
     def _generate_hailuo_anime_clip(self, prompt, save_path, is_shorts=False):
         try:
             print("  Hailuo generating: " + prompt[:50])
-            style = "dark mysterious anime style, paranormal atmosphere, " if not is_shorts else "dark mystery anime style, shocking, "
-            anime_prompt = (
-                style + prompt +
-                ". Cinematic, dramatic lighting, dark atmosphere, high quality animation, smooth motion, no text."
-            )
+            style = "dark mysterious cinematic style, paranormal atmosphere, dramatic lighting, "
+            anime_prompt = style + prompt + ". High quality, smooth motion, no text, no watermark."
             result = fal_client.subscribe(
                 "fal-ai/minimax/hailuo-02/standard/text-to-video",
                 arguments={"prompt": anime_prompt, "duration": 6, "resolution": "768p"}
@@ -158,15 +162,13 @@ class ProductionAgent:
 
     def _fetch_pixabay_video(self, query, save_path, used_ids=None):
         try:
-            params = {"key": self.pixabay_api_key, "q": query, "video_type": "animation", "per_page": 10, "safesearch": "true", "order": "popular"}
-            response = requests.get("https://pixabay.com/api/videos/", params=params, timeout=15)
-            data = response.json()
-            videos = data.get("hits", [])
-            if not videos:
-                params["video_type"] = "film"
+            for video_type in ["animation", "film"]:
+                params = {"key": self.pixabay_api_key, "q": query, "video_type": video_type, "per_page": 10, "safesearch": "true", "order": "popular"}
                 response = requests.get("https://pixabay.com/api/videos/", params=params, timeout=15)
                 data = response.json()
                 videos = data.get("hits", [])
+                if videos:
+                    break
             if not videos:
                 return False
             selected = None
@@ -200,7 +202,7 @@ class ProductionAgent:
     def _download_clips_for_segments(self, segments, max_hailuo=30, is_shorts=False):
         clip_paths = []
         used_video_ids = set()
-        fallbacks = ["dark mystery forest", "abandoned building night", "foggy road", "dramatic storm", "dark corridor", "mysterious figure"]
+        fallbacks = ["dark mystery forest", "abandoned building", "foggy road night", "dramatic storm", "dark corridor"]
         fallback_index = 0
         hailuo_count = 0
         for i, segment in enumerate(segments):
@@ -223,19 +225,72 @@ class ProductionAgent:
         print("Total clips: " + str(len(clip_paths)) + " (Hailuo: " + str(hailuo_count) + ")")
         return clip_paths
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None, clip_duration=6):
+    def _add_subtitles(self, video_path, script, audio_duration, is_shorts=False):
+        try:
+            if isinstance(script, dict):
+                script = " ".join([str(v) for v in script.values()])
+            script = str(script)
+            words = script.split()
+            if not words:
+                return video_path
+            srt_path = os.path.join(self.output_dir, "subtitles.srt")
+            words_per_second = len(words) / audio_duration
+            chunk_size = max(1, int(words_per_second * 3))
+            chunks = []
+            for i in range(0, len(words), chunk_size):
+                chunks.append(" ".join(words[i:i+chunk_size]))
+            time_per_chunk = audio_duration / len(chunks)
+            with open(srt_path, "w") as f:
+                for i, chunk in enumerate(chunks):
+                    start = i * time_per_chunk
+                    end = (i + 1) * time_per_chunk
+                    def fmt(t):
+                        h = int(t // 3600)
+                        m = int((t % 3600) // 60)
+                        s = int(t % 60)
+                        ms = int((t - int(t)) * 1000)
+                        return str(h).zfill(2) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2) + "," + str(ms).zfill(3)
+                    f.write(str(i+1) + "\n")
+                    f.write(fmt(start) + " --> " + fmt(end) + "\n")
+                    f.write(chunk + "\n\n")
+            subtitled_path = os.path.join(self.output_dir, "final_subtitled.mp4")
+            font_size = "18" if is_shorts else "24"
+            margin = "60" if is_shorts else "40"
+            cmd = (
+                "ffmpeg -y -i " + video_path + " "
+                "-vf \"subtitles=" + srt_path + ":force_style='FontSize=" + font_size + ",PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Bold=1,MarginV=" + margin + "'\" "
+                "-c:a copy " + subtitled_path
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(subtitled_path):
+                print("Subtitles added")
+                return subtitled_path
+            print("Subtitle failed, using video without subtitles")
+            return video_path
+        except Exception as e:
+            print("Subtitle error: " + str(e))
+            return video_path
+
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None, clip_duration=3):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
         normalized = []
         num_clips = len(clip_paths)
-        duration_per_clip = max(4, int(audio_duration / num_clips))
+        duration_per_clip = max(3, int(audio_duration / num_clips))
         print("Clips: " + str(num_clips) + ", duration each: " + str(duration_per_clip) + "s")
-        width = "1080" if is_shorts else "1920"
-        height = "1920" if is_shorts else "1080"
+        if is_shorts:
+            width = "1080"
+            height = "1920"
+        else:
+            width = "1920"
+            height = "1080"
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
-            vf = "scale=" + width + ":" + height + ":force_original_aspect_ratio=decrease,pad=" + width + ":" + height + ":(ow-iw)/2:(oh-ih)/2"
+            if is_shorts:
+                vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
+            else:
+                vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
             cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\" -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
             os.system(cmd)
             if os.path.exists(norm_path):
