@@ -13,12 +13,6 @@ ELEVENLABS_VOICES = [
     {"id": "jsCqWAovK2LkecY7zXl4", "name": "Freya"},
 ]
 
-MUSIC_TRACKS = [
-    "https://www.bensound.com/bensound-music/bensound-ukulele.mp3",
-    "https://www.bensound.com/bensound-music/bensound-happyrock.mp3",
-    "https://www.bensound.com/bensound-music/bensound-sunny.mp3",
-]
-
 
 class ProductionAgent:
     def __init__(self):
@@ -35,21 +29,17 @@ class ProductionAgent:
         audio_duration = self._get_audio_duration(audio_path)
         audio_duration = min(audio_duration, max_duration)
         print("Final duration: " + str(round(audio_duration, 1)) + "s")
-        music_path = self._download_background_music()
-        if music_path:
-            audio_path = self._mix_audio(audio_path, music_path, audio_duration)
+        music_path = self._get_background_music()
         segments = self._split_script_to_segments(video_data["script"], audio_duration)
-        dalle_prompts = video_data.get("dalle_prompts", [])
-        clip_paths = self._download_clips_for_segments(segments, dalle_prompts, is_shorts)
-        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts)
+        clip_paths = self._download_clips_for_segments(segments)
+        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts, music_path)
         return video_path
 
     def _generate_audio(self, script, max_duration=240):
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
         script = str(script)
-        words_per_second = 2.5
-        max_words = int(max_duration * words_per_second)
+        max_words = int(max_duration * 2.5)
         words = script.split()
         if len(words) > max_words:
             script = " ".join(words[:max_words])
@@ -89,35 +79,6 @@ class ProductionAgent:
         asyncio.run(_tts())
         return audio_path
 
-    def _download_background_music(self):
-        try:
-            music_path = os.path.join(self.output_dir, "music.mp3")
-            url = random.choice(MUSIC_TRACKS)
-            r = requests.get(url, timeout=15)
-            if r.status_code == 200:
-                with open(music_path, "wb") as f:
-                    f.write(r.content)
-                print("Background music downloaded")
-                return music_path
-        except Exception as e:
-            print("Music download error: " + str(e))
-        return None
-
-    def _mix_audio(self, voice_path, music_path, duration):
-        mixed_path = os.path.join(self.output_dir, "mixed_audio.mp3")
-        cmd = (
-            "ffmpeg -y -i " + voice_path + " -i " + music_path +
-            " -filter_complex \"[1:a]volume=0.15,aloop=loop=-1:size=2e+09[music];"
-            "[0:a][music]amix=inputs=2:duration=first[out]\" "
-            "-map \"[out]\" -t " + str(int(duration)) + " " + mixed_path
-        )
-        result = os.system(cmd)
-        if result == 0 and os.path.exists(mixed_path):
-            print("Audio mixed with background music")
-            return mixed_path
-        print("Audio mix failed, using voice only")
-        return voice_path
-
     def _get_audio_duration(self, audio_path):
         try:
             import subprocess
@@ -133,14 +94,37 @@ class ProductionAgent:
             print("Duration error: " + str(e))
             return 180.0
 
+    def _get_background_music(self):
+        try:
+            music_path = os.path.join(self.output_dir, "music.mp3")
+            urls = [
+                "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff3a5b.mp3",
+                "https://cdn.pixabay.com/download/audio/2021/11/25/audio_5bdf8a4a6f.mp3",
+                "https://cdn.pixabay.com/download/audio/2022/03/15/audio_1e6ede8a71.mp3",
+            ]
+            for url in urls:
+                try:
+                    r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+                    if r.status_code == 200 and len(r.content) > 10000:
+                        with open(music_path, "wb") as f:
+                            f.write(r.content)
+                        print("Background music downloaded")
+                        return music_path
+                except Exception:
+                    continue
+        except Exception as e:
+            print("Music error: " + str(e))
+        return None
+
     def _split_script_to_segments(self, script, audio_duration):
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
         script = str(script)
         sentences = re.split(r'(?<=[.!?])\s+', script)
         sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
-        segment_duration = 10.0
-        num_segments = max(1, int(audio_duration / segment_duration))
+        segment_duration = 4.0
+        num_segments = max(3, int(audio_duration / segment_duration))
+        print("Target segments: " + str(num_segments) + " (every 4s)")
         if not sentences:
             return [{"text": script, "duration": segment_duration}] * num_segments
         chunk_size = max(1, len(sentences) // num_segments)
@@ -159,60 +143,45 @@ class ProductionAgent:
         keywords = [w for w in words if w not in stop_words]
         return " ".join(keywords[:3]) if keywords else "funny animals"
 
-    def _generate_dalle_image(self, prompt, save_path, duration=10):
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.openai_api_key)
-            full_prompt = "Cute colorful cartoon illustration for kids, funny and happy, " + prompt + ". Bright colors, no text, no watermarks, Pixar style, fun."
-            response = client.images.generate(model="gpt-image-1", prompt=full_prompt, size="1792x1024", quality="standard", n=1)
-            image_url = response.data[0].url
-            r = requests.get(image_url, timeout=30)
-            with open(save_path, "wb") as f:
-                f.write(r.content)
-            video_path = save_path.replace(".jpg", ".mp4")
-            cmd = "ffmpeg -y -loop 1 -i " + save_path + " -t " + str(duration) + " -c:v libx264 -vf scale=1920:1080 " + video_path
-            os.system(cmd)
-            if os.path.exists(video_path):
-                print("DALL-E image created")
-                return video_path
-        except Exception as e:
-            print("DALL-E error: " + str(e))
-        return None
-
-    def _download_clips_for_segments(self, segments, dalle_prompts, is_shorts=False):
+    def _download_clips_for_segments(self, segments):
         clip_paths = []
-        used_queries = set()
-        dalle_index = 0
+        used_video_ids = set()
+        fallbacks = ["funny animals", "cute animals playing", "kids laughing", "colorful nature", "funny cats", "baby animals"]
+        fallback_index = 0
         for i, segment in enumerate(segments):
-            clip_path_base = os.path.join(self.output_dir, "clip_" + str(i))
-            clip_path_mp4 = clip_path_base + ".mp4"
-            if i % 2 == 1 and dalle_index < len(dalle_prompts):
-                dalle_clip = self._generate_dalle_image(dalle_prompts[dalle_index], clip_path_base + ".jpg", int(segment["duration"]))
-                dalle_index += 1
-                if dalle_clip:
-                    clip_paths.append((dalle_clip, segment["duration"]))
-                    continue
+            clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
             query = self._extract_keywords(segment["text"])
-            if query in used_queries:
-                query = query + " funny"
-            used_queries.add(query)
-            print("Segment " + str(i+1) + ": Pexels '" + query + "'")
-            if self._fetch_pexels_video(query, clip_path_mp4):
-                clip_paths.append((clip_path_mp4, segment["duration"]))
-            elif self._fetch_pexels_video("funny animals kids", clip_path_mp4):
-                clip_paths.append((clip_path_mp4, segment["duration"]))
+            print("Segment " + str(i+1) + ": searching '" + query + "'")
+            success = self._fetch_pexels_video(query, clip_path, used_video_ids)
+            if not success:
+                fallback = fallbacks[fallback_index % len(fallbacks)]
+                fallback_index += 1
+                success = self._fetch_pexels_video(fallback, clip_path, used_video_ids)
+            if success:
+                clip_paths.append((clip_path, segment["duration"]))
         return clip_paths
 
-    def _fetch_pexels_video(self, query, save_path):
+    def _fetch_pexels_video(self, query, save_path, used_ids=None):
         try:
             headers = {"Authorization": self.pexels_api_key}
-            params = {"query": query, "per_page": 5, "orientation": "landscape"}
+            params = {"query": query, "per_page": 10, "orientation": "landscape"}
             response = requests.get("https://api.pexels.com/videos/search", headers=headers, params=params, timeout=15)
             data = response.json()
             videos = data.get("videos", [])
             if not videos:
                 return False
-            video_files = videos[0].get("video_files", [])
+            selected = None
+            for video in videos:
+                vid_id = video.get("id")
+                if used_ids is not None and vid_id in used_ids:
+                    continue
+                selected = video
+                if used_ids is not None:
+                    used_ids.add(vid_id)
+                break
+            if not selected:
+                selected = videos[0]
+            video_files = selected.get("video_files", [])
             hd_files = [f for f in video_files if f.get("width", 0) >= 1280]
             if not hd_files:
                 hd_files = video_files
@@ -227,13 +196,13 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False):
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
         normalized = []
         num_clips = len(clip_paths)
-        duration_per_clip = max(5, int(audio_duration / num_clips))
+        duration_per_clip = max(4, int(audio_duration / num_clips))
         print("Clips: " + str(num_clips) + ", duration each: " + str(duration_per_clip) + "s")
         width = "1080" if is_shorts else "1920"
         height = "1920" if is_shorts else "1080"
@@ -253,6 +222,20 @@ class ProductionAgent:
                 f.write("file '" + os.path.abspath(clip) + "'\n")
         merged_path = os.path.join(self.output_dir, "merged.mp4")
         os.system("ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path)
+        if music_path and os.path.exists(music_path):
+            mixed_audio = os.path.join(self.output_dir, "mixed.mp3")
+            cmd = (
+                "ffmpeg -y -i " + audio_path + " -i " + music_path +
+                " -filter_complex \"[1:a]volume=0.12,aloop=loop=-1:size=2e+09[bg];"
+                "[0:a][bg]amix=inputs=2:duration=first[out]\" "
+                "-map \"[out]\" -t " + str(int(audio_duration)) + " " + mixed_audio
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(mixed_audio):
+                audio_path = mixed_audio
+                print("Music mixed successfully")
+            else:
+                print("Music mix failed, using voice only")
         cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path + " -map 0:v -map 1:a -c:v copy -c:a aac -t " + str(int(audio_duration)) + " " + video_path
         os.system(cmd)
         if os.path.exists(video_path):
