@@ -18,7 +18,7 @@ class ProductionAgent:
     def __init__(self):
         self.output_dir = "output"
         self.voice = "en-US-AriaNeural"
-        self.pexels_api_key = os.environ.get("PEXELS_API_KEY")
+        self.pixabay_api_key = os.environ.get("PIXABAY_API_KEY")
         self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
@@ -143,31 +143,19 @@ class ProductionAgent:
         keywords = [w for w in words if w not in stop_words]
         return " ".join(keywords[:3]) if keywords else "funny animals"
 
-    def _download_clips_for_segments(self, segments):
-        clip_paths = []
-        used_video_ids = set()
-        fallbacks = ["funny animals", "cute animals playing", "kids laughing", "colorful nature", "funny cats", "baby animals"]
-        fallback_index = 0
-        for i, segment in enumerate(segments):
-            clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
-            query = self._extract_keywords(segment["text"])
-            print("Segment " + str(i+1) + ": searching '" + query + "'")
-            success = self._fetch_pexels_video(query, clip_path, used_video_ids)
-            if not success:
-                fallback = fallbacks[fallback_index % len(fallbacks)]
-                fallback_index += 1
-                success = self._fetch_pexels_video(fallback, clip_path, used_video_ids)
-            if success:
-                clip_paths.append((clip_path, segment["duration"]))
-        return clip_paths
-
-    def _fetch_pexels_video(self, query, save_path, used_ids=None):
+    def _fetch_pixabay_video(self, query, save_path, used_ids=None):
         try:
-            headers = {"Authorization": self.pexels_api_key}
-            params = {"query": query, "per_page": 10, "orientation": "landscape"}
-            response = requests.get("https://api.pexels.com/videos/search", headers=headers, params=params, timeout=15)
+            params = {
+                "key": self.pixabay_api_key,
+                "q": query,
+                "video_type": "film",
+                "per_page": 10,
+                "safesearch": "true",
+                "order": "popular"
+            }
+            response = requests.get("https://pixabay.com/api/videos/", params=params, timeout=15)
             data = response.json()
-            videos = data.get("videos", [])
+            videos = data.get("hits", [])
             if not videos:
                 return False
             selected = None
@@ -181,20 +169,40 @@ class ProductionAgent:
                 break
             if not selected:
                 selected = videos[0]
-            video_files = selected.get("video_files", [])
-            hd_files = [f for f in video_files if f.get("width", 0) >= 1280]
-            if not hd_files:
-                hd_files = video_files
-            if not hd_files:
+            video_files = selected.get("videos", {})
+            url = None
+            for quality in ["large", "medium", "small", "tiny"]:
+                if quality in video_files and video_files[quality].get("url"):
+                    url = video_files[quality]["url"]
+                    break
+            if not url:
                 return False
-            r = requests.get(hd_files[0]["link"], timeout=60, stream=True)
+            r = requests.get(url, timeout=60, stream=True)
             with open(save_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
             return True
         except Exception as e:
-            print("Pexels error: " + str(e))
+            print("Pixabay error: " + str(e))
             return False
+
+    def _download_clips_for_segments(self, segments):
+        clip_paths = []
+        used_video_ids = set()
+        fallbacks = ["funny animals", "cute animals playing", "kids laughing", "colorful nature", "funny cats", "baby animals"]
+        fallback_index = 0
+        for i, segment in enumerate(segments):
+            clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
+            query = self._extract_keywords(segment["text"])
+            print("Segment " + str(i+1) + ": searching '" + query + "'")
+            success = self._fetch_pixabay_video(query, clip_path, used_video_ids)
+            if not success:
+                fallback = fallbacks[fallback_index % len(fallbacks)]
+                fallback_index += 1
+                success = self._fetch_pixabay_video(fallback, clip_path, used_video_ids)
+            if success:
+                clip_paths.append((clip_path, segment["duration"]))
+        return clip_paths
 
     def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None):
         if not clip_paths:
