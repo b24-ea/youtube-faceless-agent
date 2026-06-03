@@ -3,8 +3,6 @@ import asyncio
 import requests
 import edge_tts
 import re
-import time
-import jwt
 
 
 class ProductionAgent:
@@ -13,15 +11,15 @@ class ProductionAgent:
         self.voice = "en-US-AriaNeural"
         self.pexels_api_key = os.environ.get("PEXELS_API_KEY")
         self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
-        self.kling_access_key = os.environ.get("KLING_ACCESS_KEY")
-        self.kling_secret_key = os.environ.get("KLING_SECRET_KEY")
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
 
     def create_video(self, video_data):
         audio_path = self._generate_audio(video_data["script"])
         audio_duration = self._get_audio_duration(audio_path)
         segments = self._split_script_to_segments(video_data["script"], audio_duration)
-        clip_paths = self._download_clips_for_segments(segments)
+        dalle_prompts = video_data.get("dalle_prompts", [])
+        clip_paths = self._download_clips_for_segments(segments, dalle_prompts)
         video_path = self._combine_to_video(audio_path, clip_paths, audio_duration)
         return video_path
 
@@ -54,13 +52,13 @@ class ProductionAgent:
                 print("ElevenLabs audio generated")
                 return audio_path
             else:
-                print("ElevenLabs error: " + str(response.status_code) + " " + response.text[:200])
+                print("ElevenLabs error: " + str(response.status_code))
         except Exception as e:
             print("ElevenLabs error: " + str(e))
 
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            client = OpenAI(api_key=self.openai_api_key)
             response = client.audio.speech.create(
                 model="tts-1-hd",
                 voice="onyx",
@@ -102,7 +100,7 @@ class ProductionAgent:
         sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
         segment_duration = 10.0
         num_segments = max(1, int(audio_duration / segment_duration))
-        if len(sentences) == 0:
+        if not sentences:
             return [{"text": script, "duration": segment_duration}] * num_segments
         chunk_size = max(1, len(sentences) // num_segments)
         segments = []
@@ -126,105 +124,66 @@ class ProductionAgent:
         keywords = [w for w in words if w not in stop_words]
         return " ".join(keywords[:3]) if keywords else "dark mystery"
 
-    def _get_kling_token(self):
+    def _generate_dalle_image(self, prompt, save_path):
         try:
-            now = int(time.time())
-            payload = {
-                "iss": self.kling_access_key,
-                "exp": now + 1800,
-                "nbf": now - 5
-            }
-            token = jwt.encode(payload, self.kling_secret_key, algorithm="HS256")
-            return token
-        except Exception as e:
-            print("Kling token error: " + str(e))
-            return None
-
-    def _generate_kling_video(self, prompt, save_path):
-        try:
-            token = self._get_kling_token()
-            if not token:
-                return False
-
-            headers = {
-                "Authorization": "Bearer " + token,
-                "Content-Type": "application/json"
-            }
-
-            body = {
-                "model_name": "kling-v1",
-                "prompt": prompt,
-                "negative_prompt": "text, watermark, blurry, low quality",
-                "cfg_scale": 0.5,
-                "mode": "std",
-                "duration": "5"
-            }
-
-            response = requests.post(
-                "https://api.klingai.com/v1/videos/text2video",
-                json=body,
-                headers=headers,
-                timeout=30
+            from openai import OpenAI
+            client = OpenAI(api_key=self.openai_api_key)
+            full_prompt = (
+                "Cinematic horror atmosphere, dark and scary, " + prompt +
+                ". No text, no watermarks, photorealistic, dramatic lighting."
             )
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=full_prompt,
+                size="1792x1024",
+                quality="standard",
+                n=1
+            )
+            image_url = response.data[0].url
+            r = requests.get(image_url, timeout=30)
+            with open(save_path, "wb") as f:
+                f.write(r.content)
 
-            if response.status_code != 200:
-                print("Kling API error: " + str(response.status_code))
-                return False
-
-            data = response.json()
-            task_id = data.get("data", {}).get("task_id")
-            if not task_id:
-                return False
-
-            print("Kling task created: " + task_id)
-
-            for attempt in range(30):
-                time.sleep(10)
-                token = self._get_kling_token()
-                headers["Authorization"] = "Bearer " + token
-                status_response = requests.get(
-                    "https://api.klingai.com/v1/videos/text2video/" + task_id,
-                    headers=headers,
-                    timeout=15
-                )
-                status_data = status_response.json()
-                task_status = status_data.get("data", {}).get("task_status")
-
-                if task_status == "succeed":
-                    videos = status_data.get("data", {}).get("task_result", {}).get("videos", [])
-                    if videos:
-                        video_url = videos[0].get("url")
-                        r = requests.get(video_url, timeout=60, stream=True)
-                        with open(save_path, "wb") as f:
-                            for chunk in r.iter_content(chunk_size=8192):
-                                f.write(chunk)
-                        print("Kling video downloaded")
-                        return True
-                elif task_status == "failed":
-                    print("Kling task failed")
-                    return False
-                else:
-                    print("Kling status: " + str(task_status) + " (attempt " + str(attempt+1) + "/30)")
-
-            return False
+            video_path = save_path.replace(".jpg", ".mp4")
+            cmd = "ffmpeg -y -loop 1 -i " + save_path + " -t 10 -c:v libx264 -vf scale=1920:1080 " + video_path
+            os.system(cmd)
+            if os.path.exists(video_path):
+                print("DALL-E image+video created")
+                return video_path
         except Exception as e:
-            print("Kling error: " + str(e))
-            return False
+            print("DALL-E error: " + str(e))
+        return None
 
-    def _download_clips_for_segments(self, segments):
+    def _download_clips_for_segments(self, segments, dalle_prompts):
         clip_paths = []
         used_queries = set()
+        dalle_index = 0
+
         for i, segment in enumerate(segments):
-            clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
+            clip_path_base = os.path.join(self.output_dir, "clip_" + str(i))
+            clip_path_mp4 = clip_path_base + ".mp4"
+
+            if i % 2 == 1 and dalle_index < len(dalle_prompts):
+                dalle_clip = self._generate_dalle_image(
+                    dalle_prompts[dalle_index],
+                    clip_path_base + ".jpg"
+                )
+                dalle_index += 1
+                if dalle_clip:
+                    clip_paths.append((dalle_clip, segment["duration"]))
+                    continue
+
             query = self._extract_keywords(segment["text"])
             if query in used_queries:
-                query = query + " cinematic"
+                query = query + " horror"
             used_queries.add(query)
-            print("Segment " + str(i+1) + ": searching Pexels '" + query + "'")
-            if self._fetch_pexels_video(query, clip_path):
-                clip_paths.append((clip_path, segment["duration"]))
-            elif self._fetch_pexels_video("dark mystery night", clip_path):
-                clip_paths.append((clip_path, segment["duration"]))
+            print("Segment " + str(i+1) + ": Pexels '" + query + "'")
+
+            if self._fetch_pexels_video(query, clip_path_mp4):
+                clip_paths.append((clip_path_mp4, segment["duration"]))
+            elif self._fetch_pexels_video("dark scary night", clip_path_mp4):
+                clip_paths.append((clip_path_mp4, segment["duration"]))
+
         return clip_paths
 
     def _fetch_pexels_video(self, query, save_path):

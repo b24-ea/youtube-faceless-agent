@@ -4,25 +4,42 @@ import json
 class ContentAgent:
     def __init__(self, client):
         self.client = client
-        self.niche_prompts = {
-            "mysterious_events": "mysterious disappearances, unexplained phenomena, abandoned places",
-            "conspiracy_theories": "government secrets, dark history, hidden truths",
-            "disaster_scenarios": "simulation theory, parallel universe, AI takeover",
-            "leaked_footage": "leaked documents, secret recordings, whistleblower stories"
-        }
 
     def generate_video(self, niche, analytics_data):
-        niche_description = self.niche_prompts.get(niche, self.niche_prompts["mysterious_events"])
-
         prompt = (
-            "You are an expert at creating viral YouTube faceless video content.\n\n"
-            "Niche: " + niche_description + "\n"
-            "Language: English\n\n"
+            "You are an expert at creating viral scary story YouTube videos.\n\n"
+            "Create a terrifying TRUE CRIME or PARANORMAL story video script.\n"
+            "Style: Dark, suspenseful, like 'Nightmare Files' or 'Chilling Tales'\n"
+            "Length: 4-5 minutes when read aloud\n\n"
+            "Choose ONE of these story types:\n"
+            "- Real unsolved disappearance with creepy details\n"
+            "- Paranormal event with witness accounts\n"
+            "- Abandoned place with dark history\n"
+            "- Urban legend that turned out to be real\n"
+            "- Government cover-up with disturbing evidence\n\n"
             "Return ONLY a JSON object with these exact keys:\n"
-            "title, hook, script, visual_descriptions, tags, description, thumbnail_concept\n\n"
-            "visual_descriptions must be a list of 4 strings.\n"
-            "tags must be a list of 10 strings.\n"
-            "No markdown, no backticks, just raw JSON."
+            "{\n"
+            "  \"title\": \"terrifying clickbait title under 60 chars\",\n"
+            "  \"hook\": \"first 15 seconds - must be shocking\",\n"
+            "  \"script\": \"full scary story script, vivid details, suspenseful pacing\",\n"
+            "  \"visual_descriptions\": [\n"
+            "    \"scene 1: specific scary visual\",\n"
+            "    \"scene 2: specific scary visual\",\n"
+            "    \"scene 3: specific scary visual\",\n"
+            "    \"scene 4: specific scary visual\",\n"
+            "    \"scene 5: specific scary visual\",\n"
+            "    \"scene 6: specific scary visual\"\n"
+            "  ],\n"
+            "  \"dalle_prompts\": [\n"
+            "    \"cinematic horror scene 1, dark atmosphere, photorealistic\",\n"
+            "    \"cinematic horror scene 2, dark atmosphere, photorealistic\",\n"
+            "    \"cinematic horror scene 3, dark atmosphere, photorealistic\"\n"
+            "  ],\n"
+            "  \"tags\": [\"scary\", \"horror\", \"truecrime\", \"paranormal\", \"mystery\", \"creepy\", \"disturbing\", \"unsolved\", \"dark\", \"viral\"],\n"
+            "  \"description\": \"200 word spooky video description\",\n"
+            "  \"thumbnail_concept\": \"exact description for a scary thumbnail: background, subject, text overlay\"\n"
+            "}\n\n"
+            "No markdown, no backticks, raw JSON only."
         )
 
         response = self.client.messages.create(
@@ -47,27 +64,29 @@ class ContentAgent:
             video_data = json.loads(content)
         except Exception:
             video_data = {
-                "title": "The Mystery Nobody Talks About",
-                "hook": "What you are about to see will change everything...",
+                "title": "The Town That Vanished Without a Trace",
+                "hook": "In 1987, an entire town of 300 people disappeared overnight...",
                 "script": content,
                 "visual_descriptions": [
-                    "Dark mysterious atmosphere",
-                    "Old documents on a table",
-                    "Strange symbols on a wall",
-                    "Aerial view of abandoned place"
+                    "abandoned town at night with fog",
+                    "empty houses with broken windows",
+                    "old newspaper headlines about disappearance",
+                    "dark forest surrounding the town",
+                    "police tape and investigation scene",
+                    "mysterious figure in the distance"
                 ],
-                "tags": [
-                    "mystery", "conspiracy", "unexplained", "secrets", "viral",
-                    "shocking", "hidden", "truth", "exposed", "real"
+                "dalle_prompts": [
+                    "abandoned ghost town at night, thick fog, horror atmosphere, photorealistic",
+                    "dark empty house interior with broken windows, moonlight, scary",
+                    "mysterious shadowy figure in foggy forest at night, horror, cinematic"
                 ],
-                "description": "Exploring mysteries that mainstream media will not cover.",
-                "thumbnail_concept": "Dark background with glowing eye and red text"
+                "tags": ["scary", "horror", "truecrime", "paranormal", "mystery", "creepy", "disturbing", "unsolved", "dark", "viral"],
+                "description": "Exploring one of the most disturbing mysteries never solved.",
+                "thumbnail_concept": "Dark foggy abandoned town, red glowing eyes in darkness, white bold text"
             }
 
-        video_data["niche"] = niche
+        video_data["niche"] = "horror"
         return video_data
 
     def _get_performance_insight(self, analytics_data):
-        if not analytics_data or analytics_data.get("status") == "no_data":
-            return "No data yet. Use general viral trends."
-        return "First videos - use general viral format."
+        return "Focus on scary, suspenseful content that keeps viewers watching."
