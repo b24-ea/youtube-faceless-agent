@@ -28,22 +28,13 @@ class ProductionAgent:
             script = " ".join([str(v) for v in script.values()])
         script = str(script)[:4500]
         audio_path = os.path.join(self.output_dir, "audio.mp3")
-
         try:
             url = "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB"
-            headers = {
-                "xi-api-key": self.elevenlabs_api_key,
-                "Content-Type": "application/json"
-            }
+            headers = {"xi-api-key": self.elevenlabs_api_key, "Content-Type": "application/json"}
             body = {
                 "text": script,
                 "model_id": "eleven_monolingual_v1",
-                "voice_settings": {
-                    "stability": 0.4,
-                    "similarity_boost": 0.8,
-                    "style": 0.5,
-                    "use_speaker_boost": True
-                }
+                "voice_settings": {"stability": 0.4, "similarity_boost": 0.8, "style": 0.5, "use_speaker_boost": True}
             }
             response = requests.post(url, json=body, headers=headers, timeout=60)
             if response.status_code == 200:
@@ -55,21 +46,15 @@ class ProductionAgent:
                 print("ElevenLabs error: " + str(response.status_code))
         except Exception as e:
             print("ElevenLabs error: " + str(e))
-
         try:
             from openai import OpenAI
             client = OpenAI(api_key=self.openai_api_key)
-            response = client.audio.speech.create(
-                model="tts-1-hd",
-                voice="onyx",
-                input=script
-            )
+            response = client.audio.speech.create(model="tts-1-hd", voice="onyx", input=script)
             response.stream_to_file(audio_path)
             print("OpenAI TTS fallback used")
             return audio_path
         except Exception as e:
             print("OpenAI TTS error: " + str(e))
-
         async def _tts():
             communicate = edge_tts.Communicate(script, self.voice)
             await communicate.save(audio_path)
@@ -113,13 +98,7 @@ class ProductionAgent:
         return segments
 
     def _extract_keywords(self, text):
-        stop_words = {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
-            "for", "of", "with", "by", "from", "this", "that", "was", "were",
-            "been", "have", "has", "had", "will", "would", "could", "should",
-            "they", "them", "their", "there", "when", "where", "what", "which",
-            "who", "how", "all", "its", "it", "is", "are", "be", "as", "into"
-        }
+        stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "from", "this", "that", "was", "were", "been", "have", "has", "had", "will", "would", "could", "should", "they", "them", "their", "there", "when", "where", "what", "which", "who", "how", "all", "its", "it", "is", "are", "be", "as", "into"}
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
         keywords = [w for w in words if w not in stop_words]
         return " ".join(keywords[:3]) if keywords else "dark mystery"
@@ -128,27 +107,17 @@ class ProductionAgent:
         try:
             from openai import OpenAI
             client = OpenAI(api_key=self.openai_api_key)
-            full_prompt = (
-                "Cinematic horror atmosphere, dark and scary, " + prompt +
-                ". No text, no watermarks, photorealistic, dramatic lighting."
-            )
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=full_prompt,
-                size="1792x1024",
-                quality="standard",
-                n=1
-            )
+            full_prompt = "Cinematic horror atmosphere, dark and scary, " + prompt + ". No text, no watermarks, photorealistic, dramatic lighting."
+            response = client.images.generate(model="dall-e-3", prompt=full_prompt, size="1792x1024", quality="standard", n=1)
             image_url = response.data[0].url
             r = requests.get(image_url, timeout=30)
             with open(save_path, "wb") as f:
                 f.write(r.content)
-
             video_path = save_path.replace(".jpg", ".mp4")
             cmd = "ffmpeg -y -loop 1 -i " + save_path + " -t 10 -c:v libx264 -vf scale=1920:1080 " + video_path
             os.system(cmd)
             if os.path.exists(video_path):
-                print("DALL-E image+video created")
+                print("DALL-E image created")
                 return video_path
         except Exception as e:
             print("DALL-E error: " + str(e))
@@ -158,44 +127,31 @@ class ProductionAgent:
         clip_paths = []
         used_queries = set()
         dalle_index = 0
-
         for i, segment in enumerate(segments):
             clip_path_base = os.path.join(self.output_dir, "clip_" + str(i))
             clip_path_mp4 = clip_path_base + ".mp4"
-
             if i % 2 == 1 and dalle_index < len(dalle_prompts):
-                dalle_clip = self._generate_dalle_image(
-                    dalle_prompts[dalle_index],
-                    clip_path_base + ".jpg"
-                )
+                dalle_clip = self._generate_dalle_image(dalle_prompts[dalle_index], clip_path_base + ".jpg")
                 dalle_index += 1
                 if dalle_clip:
                     clip_paths.append((dalle_clip, segment["duration"]))
                     continue
-
             query = self._extract_keywords(segment["text"])
             if query in used_queries:
                 query = query + " horror"
             used_queries.add(query)
             print("Segment " + str(i+1) + ": Pexels '" + query + "'")
-
             if self._fetch_pexels_video(query, clip_path_mp4):
                 clip_paths.append((clip_path_mp4, segment["duration"]))
             elif self._fetch_pexels_video("dark scary night", clip_path_mp4):
                 clip_paths.append((clip_path_mp4, segment["duration"]))
-
         return clip_paths
 
     def _fetch_pexels_video(self, query, save_path):
         try:
             headers = {"Authorization": self.pexels_api_key}
             params = {"query": query, "per_page": 5, "orientation": "landscape"}
-            response = requests.get(
-                "https://api.pexels.com/videos/search",
-                headers=headers,
-                params=params,
-                timeout=15
-            )
+            response = requests.get("https://api.pexels.com/videos/search", headers=headers, params=params, timeout=15)
             data = response.json()
             videos = data.get("videos", [])
             if not videos:
@@ -215,20 +171,18 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-   def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
         normalized = []
         num_clips = len(clip_paths)
         duration_per_clip = max(5, int(audio_duration / num_clips))
-        print("Duration per clip: " + str(duration_per_clip) + "s, total clips: " + str(num_clips))
+        print("Clips: " + str(num_clips) + ", duration each: " + str(duration_per_clip) + "s")
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
-            vf = "scale=1920:1080:force_original_aspect_ratio=decrease,"
-            vf += "pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
-            cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\""
-            cmd += " -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
+            vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\" -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
             os.system(cmd)
             if os.path.exists(norm_path):
                 normalized.append(norm_path)
@@ -239,11 +193,8 @@ class ProductionAgent:
             for clip in normalized:
                 f.write("file '" + os.path.abspath(clip) + "'\n")
         merged_path = os.path.join(self.output_dir, "merged.mp4")
-        cmd = "ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path
-        os.system(cmd)
-        cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path
-        cmd += " -map 0:v -map 1:a -c:v copy -c:a aac"
-        cmd += " -t " + str(int(audio_duration)) + " " + video_path
+        os.system("ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path)
+        cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path + " -map 0:v -map 1:a -c:v copy -c:a aac -t " + str(int(audio_duration)) + " " + video_path
         os.system(cmd)
         if os.path.exists(video_path):
             return video_path
