@@ -32,7 +32,7 @@ class ProductionAgent:
         audio_duration = min(audio_duration, max_duration)
         print("Final duration: " + str(round(audio_duration, 1)) + "s")
         music_path = self._get_background_music()
-        clip_duration = 6
+        clip_duration = 3
         num_clips = max(3, int(audio_duration / clip_duration))
         max_hailuo = 8 if is_shorts else 30
         print("Need " + str(num_clips) + " clips, Hailuo max: " + str(max_hailuo))
@@ -250,11 +250,21 @@ class ProductionAgent:
         os.system("ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path)
         if music_path and os.path.exists(music_path):
             mixed_audio = os.path.join(self.output_dir, "mixed.mp3")
-            cmd = "ffmpeg -y -i " + audio_path + " -i " + music_path + " -filter_complex \"[1:a]volume=0.12,aloop=loop=-1:size=2e+09[bg];[0:a][bg]amix=inputs=2:duration=first[out]\" -map \"[out]\" -t " + str(int(audio_duration)) + " " + mixed_audio
+            cmd = (
+                "ffmpeg -y "
+                "-i " + audio_path + " "
+                "-stream_loop -1 -i " + music_path + " "
+                "-filter_complex \"[1:a]volume=0.10[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
+                "-map \"[out]\" "
+                "-t " + str(int(audio_duration)) + " "
+                "-c:a libmp3lame " + mixed_audio
+            )
             result = os.system(cmd)
-            if result == 0 and os.path.exists(mixed_audio):
+            if result == 0 and os.path.exists(mixed_audio) and os.path.getsize(mixed_audio) > 1000:
                 audio_path = mixed_audio
                 print("Music mixed successfully")
+            else:
+                print("Music mix failed, using voice only")
         cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path + " -map 0:v -map 1:a -c:v copy -c:a aac -t " + str(int(audio_duration)) + " " + video_path
         os.system(cmd)
         if os.path.exists(video_path):
