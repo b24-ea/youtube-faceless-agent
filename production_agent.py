@@ -7,10 +7,10 @@ import random
 
 
 ELEVENLABS_VOICES = [
-    {"id": "N2lVS1w4EtoT3dr4eOWO", "name": "Callum"},
-    {"id": "IKne3meq5aSn9XLyUdCD", "name": "Charlie"},
-    {"id": "2EiwWnXFnvU5JabPnv8n", "name": "Clyde"},
-    {"id": "jsCqWAovK2LkecY7zXl4", "name": "Freya"},
+    {"id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel"},
+    {"id": "AZnzlk1XvdvUeBnXmlld", "name": "Domi"},
+    {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Bella"},
+    {"id": "ErXwobaYiN019PkySvjV", "name": "Antoni"},
 ]
 
 
