@@ -3,6 +3,8 @@ import asyncio
 import requests
 import edge_tts
 import re
+import time
+import jwt
 
 
 class ProductionAgent:
@@ -10,6 +12,9 @@ class ProductionAgent:
         self.output_dir = "output"
         self.voice = "en-US-AriaNeural"
         self.pexels_api_key = os.environ.get("PEXELS_API_KEY")
+        self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
+        self.kling_access_key = os.environ.get("KLING_ACCESS_KEY")
+        self.kling_secret_key = os.environ.get("KLING_SECRET_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
 
     def create_video(self, video_data):
@@ -27,6 +32,33 @@ class ProductionAgent:
         audio_path = os.path.join(self.output_dir, "audio.mp3")
 
         try:
+            url = "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB"
+            headers = {
+                "xi-api-key": self.elevenlabs_api_key,
+                "Content-Type": "application/json"
+            }
+            body = {
+                "text": script,
+                "model_id": "eleven_monolingual_v1",
+                "voice_settings": {
+                    "stability": 0.4,
+                    "similarity_boost": 0.8,
+                    "style": 0.5,
+                    "use_speaker_boost": True
+                }
+            }
+            response = requests.post(url, json=body, headers=headers, timeout=60)
+            if response.status_code == 200:
+                with open(audio_path, "wb") as f:
+                    f.write(response.content)
+                print("ElevenLabs audio generated")
+                return audio_path
+            else:
+                print("ElevenLabs error: " + str(response.status_code) + " " + response.text[:200])
+        except Exception as e:
+            print("ElevenLabs error: " + str(e))
+
+        try:
             from openai import OpenAI
             client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             response = client.audio.speech.create(
@@ -35,14 +67,16 @@ class ProductionAgent:
                 input=script
             )
             response.stream_to_file(audio_path)
-            print("OpenAI TTS audio generated")
+            print("OpenAI TTS fallback used")
+            return audio_path
         except Exception as e:
-            print("OpenAI TTS error: " + str(e) + ", using Edge-TTS")
-            async def _tts():
-                communicate = edge_tts.Communicate(script, self.voice)
-                await communicate.save(audio_path)
-            asyncio.run(_tts())
+            print("OpenAI TTS error: " + str(e))
 
+        async def _tts():
+            communicate = edge_tts.Communicate(script, self.voice)
+            await communicate.save(audio_path)
+        asyncio.run(_tts())
+        print("Edge-TTS fallback used")
         return audio_path
 
     def _get_audio_duration(self, audio_path):
@@ -64,28 +98,20 @@ class ProductionAgent:
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
         script = str(script)
-
         sentences = re.split(r'(?<=[.!?])\s+', script)
         sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
-
         segment_duration = 10.0
         num_segments = max(1, int(audio_duration / segment_duration))
-
         if len(sentences) == 0:
             return [{"text": script, "duration": segment_duration}] * num_segments
-
         chunk_size = max(1, len(sentences) // num_segments)
         segments = []
         for i in range(num_segments):
             start = i * chunk_size
             end = start + chunk_size if i < num_segments - 1 else len(sentences)
             chunk_text = " ".join(sentences[start:end])
-            segments.append({
-                "text": chunk_text,
-                "duration": segment_duration
-            })
-
-        print("Created " + str(len(segments)) + " segments of 10s each")
+            segments.append({"text": chunk_text, "duration": segment_duration})
+        print("Created " + str(len(segments)) + " segments")
         return segments
 
     def _extract_keywords(self, text):
@@ -98,23 +124,92 @@ class ProductionAgent:
         }
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
         keywords = [w for w in words if w not in stop_words]
+        return " ".join(keywords[:3]) if keywords else "dark mystery"
 
-        priority_words = []
-        location_words = ["town", "city", "island", "mountain", "forest", "building",
-                         "hospital", "school", "mine", "lake", "river", "desert"]
-        action_words = ["disappear", "vanish", "abandon", "secret", "hidden", "mysterious",
-                       "dark", "ghost", "haunted", "strange", "bizarre", "unknown"]
+    def _get_kling_token(self):
+        try:
+            now = int(time.time())
+            payload = {
+                "iss": self.kling_access_key,
+                "exp": now + 1800,
+                "nbf": now - 5
+            }
+            token = jwt.encode(payload, self.kling_secret_key, algorithm="HS256")
+            return token
+        except Exception as e:
+            print("Kling token error: " + str(e))
+            return None
 
-        for word in keywords:
-            if any(loc in word for loc in location_words):
-                priority_words.insert(0, word)
-            elif any(act in word for act in action_words):
-                priority_words.insert(0, word)
-            else:
-                priority_words.append(word)
+    def _generate_kling_video(self, prompt, save_path):
+        try:
+            token = self._get_kling_token()
+            if not token:
+                return False
 
-        top_keywords = priority_words[:3]
-        return " ".join(top_keywords) if top_keywords else "dark mystery"
+            headers = {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            }
+
+            body = {
+                "model_name": "kling-v1",
+                "prompt": prompt,
+                "negative_prompt": "text, watermark, blurry, low quality",
+                "cfg_scale": 0.5,
+                "mode": "std",
+                "duration": "5"
+            }
+
+            response = requests.post(
+                "https://api.klingai.com/v1/videos/text2video",
+                json=body,
+                headers=headers,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                print("Kling API error: " + str(response.status_code))
+                return False
+
+            data = response.json()
+            task_id = data.get("data", {}).get("task_id")
+            if not task_id:
+                return False
+
+            print("Kling task created: " + task_id)
+
+            for attempt in range(30):
+                time.sleep(10)
+                token = self._get_kling_token()
+                headers["Authorization"] = "Bearer " + token
+                status_response = requests.get(
+                    "https://api.klingai.com/v1/videos/text2video/" + task_id,
+                    headers=headers,
+                    timeout=15
+                )
+                status_data = status_response.json()
+                task_status = status_data.get("data", {}).get("task_status")
+
+                if task_status == "succeed":
+                    videos = status_data.get("data", {}).get("task_result", {}).get("videos", [])
+                    if videos:
+                        video_url = videos[0].get("url")
+                        r = requests.get(video_url, timeout=60, stream=True)
+                        with open(save_path, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                        print("Kling video downloaded")
+                        return True
+                elif task_status == "failed":
+                    print("Kling task failed")
+                    return False
+                else:
+                    print("Kling status: " + str(task_status) + " (attempt " + str(attempt+1) + "/30)")
+
+            return False
+        except Exception as e:
+            print("Kling error: " + str(e))
+            return False
 
     def _download_clips_for_segments(self, segments):
         clip_paths = []
@@ -125,23 +220,24 @@ class ProductionAgent:
             query = self._extract_keywords(segment["text"])
 
             if query in used_queries:
-                words = query.split()
-                if len(words) > 1:
-                    query = words[-1] + " dark cinematic"
-                else:
-                    query = query + " night mysterious"
-
+                query = query + " cinematic"
             used_queries.add(query)
-            print("Segment " + str(i+1) + ": searching '" + query + "'")
 
+            kling_prompt = (
+                "Cinematic dark mysterious atmosphere, " + segment["text"][:200] +
+                ". Dramatic lighting, photorealistic, no text, no watermark."
+            )
+
+            print("Segment " + str(i+1) + ": trying Kling AI...")
+            if self._generate_kling_video(kling_prompt, clip_path):
+                clip_paths.append((clip_path, segment["duration"]))
+                continue
+
+            print("Segment " + str(i+1) + ": falling back to Pexels '" + query + "'")
             if self._fetch_pexels_video(query, clip_path):
                 clip_paths.append((clip_path, segment["duration"]))
-            else:
-                fallback = "dark mysterious atmosphere"
-                if self._fetch_pexels_video(fallback, clip_path):
-                    clip_paths.append((clip_path, segment["duration"]))
-                else:
-                    print("No clip found for segment " + str(i+1))
+            elif self._fetch_pexels_video("dark mystery night", clip_path):
+                clip_paths.append((clip_path, segment["duration"]))
 
         return clip_paths
 
@@ -174,13 +270,11 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration):
+    def _combine_to_video(self, audio_path, clip_paths):
         if not clip_paths:
             return None
-
         video_path = os.path.join(self.output_dir, "final_video.mp4")
         normalized = []
-
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
             vf = "scale=1920:1080:force_original_aspect_ratio=decrease,"
@@ -190,23 +284,18 @@ class ProductionAgent:
             os.system(cmd)
             if os.path.exists(norm_path):
                 normalized.append(norm_path)
-
         if not normalized:
             return None
-
         concat_file = os.path.join(self.output_dir, "concat.txt")
         with open(concat_file, "w") as f:
             for clip in normalized:
                 f.write("file '" + os.path.abspath(clip) + "'\n")
-
         merged_path = os.path.join(self.output_dir, "merged.mp4")
         cmd = "ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path
         os.system(cmd)
-
         cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path
         cmd += " -map 0:v -map 1:a -c:v copy -c:a aac -shortest " + video_path
         os.system(cmd)
-
         if os.path.exists(video_path):
             return video_path
         return None
