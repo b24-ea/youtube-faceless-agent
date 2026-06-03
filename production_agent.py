@@ -122,8 +122,7 @@ class ProductionAgent:
             norm_path = f"{self.output_dir}/norm_{i}.mp4"
             cmd = (
                 f"ffmpeg -y -i {clip} "
-                f"-vf scale=1920:1080:force_original_aspect_ratio=decrease,"
-                f"pad=1920:1080:(ow-iw)/2:(oh-ih)/2 "
+                f"-vf \"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2\"
                 f"-c:v libx264 -an -t 30 {norm_path}"
             )
             os.system(cmd)
