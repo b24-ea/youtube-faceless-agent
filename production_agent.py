@@ -223,7 +223,7 @@ class ProductionAgent:
         print("Total clips: " + str(len(clip_paths)) + " (Hailuo: " + str(hailuo_count) + ")")
         return clip_paths
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None):
+    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180, is_shorts=False, music_path=None, clip_duration=6):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
