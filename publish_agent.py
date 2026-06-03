@@ -72,7 +72,7 @@ class PublishAgent:
             response = client.images.generate(
                 model="gpt-image-1",
                 prompt=prompt,
-                size="1792x1024",
+                size="1024x1024",
                 quality="auto",
                 n=1
             )
