@@ -215,17 +215,20 @@ class ProductionAgent:
             print("Pexels error: " + str(e))
             return False
 
-    def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
+   def _combine_to_video(self, audio_path, clip_paths, audio_duration=180):
         if not clip_paths:
             return None
         video_path = os.path.join(self.output_dir, "final_video.mp4")
         normalized = []
+        num_clips = len(clip_paths)
+        duration_per_clip = max(5, int(audio_duration / num_clips))
+        print("Duration per clip: " + str(duration_per_clip) + "s, total clips: " + str(num_clips))
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
             vf = "scale=1920:1080:force_original_aspect_ratio=decrease,"
             vf += "pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
             cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\""
-            cmd += " -c:v libx264 -an -t " + str(int(duration)) + " " + norm_path
+            cmd += " -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
             os.system(cmd)
             if os.path.exists(norm_path):
                 normalized.append(norm_path)
@@ -239,7 +242,8 @@ class ProductionAgent:
         cmd = "ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + merged_path
         os.system(cmd)
         cmd = "ffmpeg -y -i " + merged_path + " -i " + audio_path
-        cmd += " -map 0:v -map 1:a -c:v copy -c:a aac -shortest " + video_path
+        cmd += " -map 0:v -map 1:a -c:v copy -c:a aac"
+        cmd += " -t " + str(int(audio_duration)) + " " + video_path
         os.system(cmd)
         if os.path.exists(video_path):
             return video_path
