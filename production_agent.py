@@ -109,24 +109,21 @@ class ProductionAgent:
             print("Music error: " + str(e))
         return None
 
-    def _split_script_to_segments(self, script, audio_duration):
+    def _split_script_to_segments(self, script, num_clips, clip_duration):
         if isinstance(script, dict):
             script = " ".join([str(v) for v in script.values()])
         script = str(script)
         sentences = re.split(r'(?<=[.!?])\s+', script)
         sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
-        segment_duration = 6.0
-        num_segments = max(3, int(audio_duration / segment_duration))
-        print("Target segments: " + str(num_segments) + " (every 6s)")
         if not sentences:
-            return [{"text": script, "duration": segment_duration}] * num_segments
-        chunk_size = max(1, len(sentences) // num_segments)
+            return [{"text": script, "duration": clip_duration}] * num_clips
+        chunk_size = max(1, len(sentences) // num_clips)
         segments = []
-        for i in range(num_segments):
+        for i in range(num_clips):
             start = i * chunk_size
-            end = start + chunk_size if i < num_segments - 1 else len(sentences)
-            segments.append({"text": " ".join(sentences[start:end]), "duration": segment_duration})
-        print("Created " + str(len(segments)) + " segments")
+            end = start + chunk_size if i < num_clips - 1 else len(sentences)
+            segments.append({"text": " ".join(sentences[start:end]), "duration": clip_duration})
+        print("Created " + str(len(segments)) + " segments of " + str(clip_duration) + "s each")
         return segments
 
     def _extract_keywords(self, text):
