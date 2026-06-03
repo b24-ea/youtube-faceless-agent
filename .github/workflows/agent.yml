@@ -36,4 +36,5 @@ jobs:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           KLING_ACCESS_KEY: ${{ secrets.KLING_ACCESS_KEY }}
           KLING_SECRET_KEY: ${{ secrets.KLING_SECRET_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: python agent.py
