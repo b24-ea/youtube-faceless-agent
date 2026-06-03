@@ -97,18 +97,21 @@ class ProductionAgent:
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
             urls = [
-                "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff3a5b.mp3",
-                "https://cdn.pixabay.com/download/audio/2021/11/25/audio_5bdf8a4a6f.mp3",
-                "https://cdn.pixabay.com/download/audio/2022/03/15/audio_1e6ede8a71.mp3",
+                "https://cdn.pixabay.com/audio/2023/03/13/audio_3eda843cae.mp3",
+                "https://cdn.pixabay.com/audio/2022/10/25/audio_fd44b6fdc0.mp3",
+                "https://cdn.pixabay.com/audio/2023/01/09/audio_677b7e5f42.mp3",
+                "https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3",
             ]
             for url in urls:
                 try:
-                    r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
-                    if r.status_code == 200 and len(r.content) > 10000:
+                    r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://pixabay.com/"})
+                    if r.status_code == 200 and len(r.content) > 50000:
                         with open(music_path, "wb") as f:
                             f.write(r.content)
                         print("Background music downloaded: " + str(len(r.content)) + " bytes")
                         return music_path
+                    else:
+                        print("Music URL status: " + str(r.status_code) + " size: " + str(len(r.content)))
                 except Exception as ex:
                     print("Music URL failed: " + str(ex))
                     continue
@@ -235,7 +238,7 @@ class ProductionAgent:
                 return video_path
             srt_path = os.path.join(self.output_dir, "subtitles.srt")
             words_per_second = len(words) / audio_duration
-            chunk_size = max(1, int(words_per_second * 3))
+            chunk_size = max(1, int(words_per_second * 2))
             chunks = []
             for i in range(0, len(words), chunk_size):
                 chunks.append(" ".join(words[i:i+chunk_size]))
@@ -252,20 +255,37 @@ class ProductionAgent:
                         return str(h).zfill(2) + ":" + str(m).zfill(2) + ":" + str(s).zfill(2) + "," + str(ms).zfill(3)
                     f.write(str(i+1) + "\n")
                     f.write(fmt(start) + " --> " + fmt(end) + "\n")
-                    f.write(chunk + "\n\n")
+                    f.write(chunk.upper() + "\n\n")
             subtitled_path = os.path.join(self.output_dir, "final_subtitled.mp4")
-            font_size = "18" if is_shorts else "24"
-            margin = "60" if is_shorts else "40"
+            if is_shorts:
+                font_size = "22"
+                margin_v = "400"
+            else:
+                font_size = "28"
+                margin_v = "60"
+            style = (
+                "FontName=Impact,"
+                "FontSize=" + font_size + ","
+                "PrimaryColour=&H00FFFFFF,"
+                "SecondaryColour=&H00FFFF00,"
+                "OutlineColour=&H00000000,"
+                "BackColour=&H00000000,"
+                "Bold=1,"
+                "Outline=3,"
+                "Shadow=1,"
+                "Alignment=2,"
+                "MarginV=" + margin_v
+            )
             cmd = (
                 "ffmpeg -y -i " + video_path + " "
-                "-vf \"subtitles=" + srt_path + ":force_style='FontSize=" + font_size + ",PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Bold=1,MarginV=" + margin + "'\" "
+                "-vf \"subtitles=" + srt_path + ":force_style='" + style + "'\" "
                 "-c:a copy " + subtitled_path
             )
             result = os.system(cmd)
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
                 return subtitled_path
-            print("Subtitle failed, using video without subtitles")
+            print("Subtitle failed")
             return video_path
         except Exception as e:
             print("Subtitle error: " + str(e))
@@ -288,9 +308,9 @@ class ProductionAgent:
         for i, (clip, duration) in enumerate(clip_paths):
             norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
             if is_shorts:
-                vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
+                vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,eq=brightness=0.05:contrast=1.1:saturation=1.3"
             else:
-                vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+                vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.05:contrast=1.1:saturation=1.3"
             cmd = "ffmpeg -y -i " + clip + " -vf \"" + vf + "\" -c:v libx264 -an -t " + str(duration_per_clip) + " " + norm_path
             os.system(cmd)
             if os.path.exists(norm_path):
