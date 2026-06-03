@@ -32,9 +32,13 @@ class ProductionAgent:
         audio_duration = min(audio_duration, max_duration)
         print("Final duration: " + str(round(audio_duration, 1)) + "s")
         music_path = self._get_background_music()
-        segments = self._split_script_to_segments(video_data["script"], audio_duration)
+        clip_duration = 6
+        num_clips = max(3, int(audio_duration / clip_duration))
+        max_hailuo = 8 if is_shorts else 30
+        print("Need " + str(num_clips) + " clips, Hailuo max: " + str(max_hailuo))
+        segments = self._split_script_to_segments(video_data["script"], num_clips, clip_duration)
         clip_paths = self._download_clips_for_segments(segments, max_hailuo, is_shorts)
-        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts, music_path)
+        video_path = self._combine_to_video(audio_path, clip_paths, audio_duration, is_shorts, music_path, clip_duration)
         return video_path
 
     def _generate_audio(self, script, max_duration=240):
