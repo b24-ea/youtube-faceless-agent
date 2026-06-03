@@ -43,9 +43,11 @@ class YouTubeAgent:
         print(f"✅ Başlık: {video_data.get('title', video_data.get('BAŞLIK', 'Video üretildi'))}")
 
         # 4. Video üret
-        print("\n🎬 Video üretiliyor...")
         video_path = self.production_agent.create_video(video_data)
-        print(f"✅ Video hazır: {video_path}")
+if not video_path or not os.path.exists(video_path):
+    print("❌ Video oluşturulamadı, atlanıyor...")
+    return
+print(f"✅ Video hazır: {video_path}")
 
         # 5. YouTube'a yükle
         print("\n📤 YouTube'a yükleniyor...")
