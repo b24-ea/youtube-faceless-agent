@@ -4,6 +4,8 @@ import requests
 import edge_tts
 import re
 import random
+import time
+import fal_client
 
 
 ELEVENLABS_VOICES = [
@@ -21,6 +23,8 @@ class ProductionAgent:
         self.pixabay_api_key = os.environ.get("PIXABAY_API_KEY")
         self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
+        self.fal_api_key = os.environ.get("FAL_API_KEY")
+        os.environ["FAL_KEY"] = self.fal_api_key or ""
         os.makedirs(self.output_dir, exist_ok=True)
 
     def create_video(self, video_data, is_shorts=False):
@@ -122,9 +126,9 @@ class ProductionAgent:
         script = str(script)
         sentences = re.split(r'(?<=[.!?])\s+', script)
         sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
-        segment_duration = 4.0
+        segment_duration = 6.0
         num_segments = max(3, int(audio_duration / segment_duration))
-        print("Target segments: " + str(num_segments) + " (every 4s)")
+        print("Target segments: " + str(num_segments) + " (every 6s)")
         if not sentences:
             return [{"text": script, "duration": segment_duration}] * num_segments
         chunk_size = max(1, len(sentences) // num_segments)
@@ -141,14 +145,41 @@ class ProductionAgent:
         stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "from", "this", "that", "was", "were", "been", "have", "has", "had", "will", "would", "could", "should", "they", "them", "their", "there", "when", "where", "what", "which", "who", "how", "all", "its", "it", "is", "are", "be", "as", "into"}
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
         keywords = [w for w in words if w not in stop_words]
-        return " ".join(keywords[:3]) if keywords else "funny animals"
+        return " ".join(keywords[:4]) if keywords else "cute animals adventure"
+
+    def _generate_hailuo_anime_clip(self, prompt, save_path):
+        try:
+            print("  Generating Hailuo anime clip...")
+            anime_prompt = (
+                "anime style, colorful, cute, funny, " + prompt +
+                ". Studio Ghibli inspired, vibrant colors, smooth animation, kids friendly."
+            )
+            result = fal_client.subscribe(
+                "fal-ai/minimax-video/image-to-video",
+                arguments={
+                    "prompt": anime_prompt,
+                    "duration": "6",
+                    "resolution": "720p"
+                }
+            )
+            if result and result.get("video", {}).get("url"):
+                video_url = result["video"]["url"]
+                r = requests.get(video_url, timeout=60, stream=True)
+                with open(save_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                print("  Hailuo anime clip downloaded")
+                return True
+        except Exception as e:
+            print("  Hailuo error: " + str(e))
+        return False
 
     def _fetch_pixabay_video(self, query, save_path, used_ids=None):
         try:
             params = {
                 "key": self.pixabay_api_key,
                 "q": query,
-                "video_type": "film",
+                "video_type": "animation",
                 "per_page": 10,
                 "safesearch": "true",
                 "order": "popular"
@@ -156,6 +187,11 @@ class ProductionAgent:
             response = requests.get("https://pixabay.com/api/videos/", params=params, timeout=15)
             data = response.json()
             videos = data.get("hits", [])
+            if not videos:
+                params["video_type"] = "film"
+                response = requests.get("https://pixabay.com/api/videos/", params=params, timeout=15)
+                data = response.json()
+                videos = data.get("hits", [])
             if not videos:
                 return False
             selected = None
@@ -189,13 +225,16 @@ class ProductionAgent:
     def _download_clips_for_segments(self, segments):
         clip_paths = []
         used_video_ids = set()
-        fallbacks = ["funny animals", "cute animals playing", "kids laughing", "colorful nature", "funny cats", "baby animals"]
+        fallbacks = ["cute animals", "funny cartoon", "kids adventure", "colorful nature", "baby animals", "cute dogs"]
         fallback_index = 0
         for i, segment in enumerate(segments):
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
             query = self._extract_keywords(segment["text"])
-            print("Segment " + str(i+1) + ": searching '" + query + "'")
-            success = self._fetch_pixabay_video(query, clip_path, used_video_ids)
+            print("Segment " + str(i+1) + ": generating anime clip...")
+            success = self._generate_hailuo_anime_clip(query, clip_path)
+            if not success:
+                print("Segment " + str(i+1) + ": falling back to Pixabay '" + query + "'")
+                success = self._fetch_pixabay_video(query, clip_path, used_video_ids)
             if not success:
                 fallback = fallbacks[fallback_index % len(fallbacks)]
                 fallback_index += 1
