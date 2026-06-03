@@ -73,7 +73,7 @@ class PublishAgent:
                 model="gpt-image-1",
                 prompt=prompt,
                 size="1792x1024",
-                quality="standard",
+                quality="auto",
                 n=1
             )
             image_url = response.data[0].url
