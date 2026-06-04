@@ -35,24 +35,51 @@ class ContentAgent:
         prompt = (
             "You are creating a viral dark mystery and paranormal YouTube Shorts video.\n\n"
             "Concept: " + concept + "\n\n"
-            "Create a 30-second EXTREMELY suspenseful and shocking dark video with:\n"
-            "- Cinematic dark atmosphere with dramatic lighting\n"
-            "- Shocking and terrifying visuals\n"
-            "- Fast-paced cuts and dynamic camera movements\n"
-            "- Dark conspiracy and paranormal elements\n"
-            "- Intense build-up with shocking twist ending\n"
-            "- Mysterious and eerie mood throughout\n\n"
-            "The video_prompt must describe 4 connected dark scenes:\n"
-            "Scene 1: Mysterious shocking opening that immediately creates dread\n"
-            "Scene 2: Dark situation escalates with terrifying revelations\n"
-            "Scene 3: Maximum horror and conspiracy at peak intensity\n"
-            "Scene 4: Shocking unexpected dark twist ending\n\n"
+            "Create a 30-second EXTREMELY suspenseful and shocking dark video.\n"
+            "Fast-paced cuts, dynamic camera, dramatic dark lighting.\n"
+            "Shocking and terrifying visuals with paranormal elements.\n"
+            "Intense build-up with shocking twist ending.\n\n"
             "IMPORTANT: Everything must be in English only.\n\n"
-            "Return ONLY a JSON object:\n"
-            "{\n"
-            "  \"title\": \"dark mystery shorts title under 60 chars with #Shorts\",\n"
-            "  \"video_prompt\": \"cinematic dark thriller scene, dramatic lighting, " +
-            concept + ". Terrifying atmosphere, shocking visuals, intense pacing. "
-            "Dark conspiracy and paranormal elements. Photorealistic, 9:16 vertical video.\",\n"
-            "  \"description\": \"dark mysterious short description\",\n"
-            "  \"tags\": [\"paranormal\", \"mystery\", \"horror\", \"conspiracy\", \"dark\", \"shorts\",
+            "Return ONLY a JSON object with these exact keys:\n"
+            "title, video_prompt, description, tags\n\n"
+            "video_prompt must be: cinematic dark thriller, dramatic lighting, "
+            + concept +
+            ", terrifying atmosphere, shocking visuals, intense pacing, "
+            "photorealistic, 9:16 vertical video.\n\n"
+            "tags must be a list: paranormal, mystery, horror, conspiracy, dark, shorts, viral, scary, thriller, secrets\n\n"
+            "No markdown, raw JSON only."
+        )
+
+        response = self.client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = response.content[0].text.strip()
+        if "```" in content:
+            parts = content.split("```")
+            for part in parts:
+                if part.startswith("json"):
+                    content = part[4:].strip()
+                    break
+                elif "{" in part:
+                    content = part.strip()
+                    break
+
+        try:
+            video_data = json.loads(content)
+        except Exception:
+            video_data = {
+                "title": "The Government Secret Nobody Talks About #Shorts",
+                "video_prompt": "Cinematic dark thriller, government facility at night, mysterious scientist discovers horrifying experiment, dark lighting, shadows, conspiracy documents, shocking revelation, photorealistic, 9:16 vertical.",
+                "description": "The dark secrets they never wanted you to know.",
+                "tags": ["paranormal", "mystery", "horror", "conspiracy", "dark", "shorts", "viral", "scary", "thriller", "secrets"]
+            }
+
+        video_data["niche"] = niche
+        video_data["concept"] = concept
+        return video_data
+
+    def _get_performance_insight(self, analytics_data):
+        return "Focus on dark mysterious shocking content."
