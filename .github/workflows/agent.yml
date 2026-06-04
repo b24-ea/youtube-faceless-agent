@@ -2,8 +2,8 @@ name: YouTube Faceless Agent
 
 on:
   schedule:
-    - cron: '0 12 * * 1'  # Pazartesi
-    - cron: '0 12 * * 4'  # Persembe
+    - cron: '0 12 * * 3'  # Carsamba
+    - cron: '0 12 * * 5'  # Cuma
   workflow_dispatch:
 
 jobs:
