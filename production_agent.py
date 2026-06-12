@@ -2,6 +2,7 @@ import os
 import asyncio
 import requests
 import random
+from PIL import Image, ImageDraw
 
 
 ELEVENLABS_VOICES = [
@@ -186,6 +187,58 @@ class ProductionAgent:
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
                 ret
+                
+     def add_outro(self, video_path, audio_duration):
+        try:
+            outro_image_path = os.path.join(self.output_dir, "outro.png")
+            outro_video_path = os.path.join(self.output_dir, "outro_clip.mp4")
+            final_path = os.path.join(self.output_dir, "final_with_outro.mp4")
+
+            img = Image.new("RGB", (1080, 1920), (0, 0, 0))
+            draw = ImageDraw.Draw(img)
+
+            draw.rectangle([0, 0, 1080, 1920], fill=(5, 5, 15))
+
+            for i in range(0, 1920, 4):
+                alpha = int(20 * (i / 1920))
+                draw.line([(0, i), (1080, i)], fill=(alpha, alpha, alpha+10))
+
+            draw.text((540, 700), "FOLLOW", fill=(255, 50, 50), anchor="mm")
+            draw.text((540, 820), "FOR MORE", fill=(255, 255, 255), anchor="mm")
+            draw.text((540, 940), "CLASSIFIED", fill=(255, 50, 50), anchor="mm")
+            draw.text((540, 1060), "SECRETS", fill=(255, 255, 255), anchor="mm")
+            draw.text((540, 1250), "NEW VIDEO", fill=(150, 150, 150), anchor="mm")
+            draw.text((540, 1330), "EVERY WEEK", fill=(150, 150, 150), anchor="mm")
+
+            img.save(outro_image_path, "PNG")
+
+            cmd = (
+                "ffmpeg -y -loop 1 -i " + outro_image_path +
+                " -t 3 -c:v libx264 -vf scale=1080:1920 -pix_fmt yuv420p " +
+                outro_video_path
+            )
+            os.system(cmd)
+
+            if not os.path.exists(outro_video_path):
+                return video_path
+
+            concat_file = os.path.join(self.output_dir, "final_concat.txt")
+            with open(concat_file, "w") as f:
+                f.write("file '" + os.path.abspath(video_path) + "'\n")
+                f.write("file '" + os.path.abspath(outro_video_path) + "'\n")
+
+            cmd = (
+                "ffmpeg -y -f concat -safe 0 -i " + concat_file +
+                " -c copy " + final_path
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(final_path):
+                print("Outro added")
+                return final_path
+
+        except Exception as e:
+            print("Outro error: " + str(e))
+        return video_path
 
     def get_audio_duration(self, audio_path):
         try:
