@@ -88,31 +88,46 @@ class ProductionAgent:
             words = script.split()
             if not words:
                 return video_path
+
             srt_path = os.path.join(self.output_dir, "subtitles.srt")
             words_per_second = len(words) / audio_duration
-            chunk_size = max(1, int(words_per_second * 2))
+            chunk_size = max(1, int(words_per_second * 1.5))
             chunks = []
             for i in range(0, len(words), chunk_size):
-                chunks.append(" ".join(words[i:i+chunk_size]))
+                chunk = words[i:i+chunk_size]
+                chunks.append(" ".join(chunk))
+
             time_per_chunk = audio_duration / len(chunks)
-            with open(srt_path, "w") as f:
+
+            with open(srt_path, "w", encoding="utf-8") as f:
                 for i, chunk in enumerate(chunks):
                     start = i * time_per_chunk
                     end = (i + 1) * time_per_chunk
+                    words_in_chunk = chunk.split()
+                    if len(words_in_chunk) > 1:
+                        mid = len(words_in_chunk) // 2
+                        first = " ".join(words_in_chunk[:mid]).upper()
+                        last = " ".join(words_in_chunk[mid:]).upper()
+                        styled = first + " <font color='#FFFF00'>" + last + "</font>"
+                    else:
+                        styled = "<font color='#FFFF00'>" + chunk.upper() + "</font>"
                     f.write(str(i+1) + "\n")
                     f.write(self._fmt_time(start) + " --> " + self._fmt_time(end) + "\n")
-                    f.write(chunk.upper() + "\n\n")
+                    f.write(styled + "\n\n")
+
             subtitled_path = os.path.join(self.output_dir, "final_subtitled.mp4")
             style = (
                 "FontName=Impact,"
-                "FontSize=22,"
+                "FontSize=24,"
                 "PrimaryColour=&H00FFFFFF,"
+                "SecondaryColour=&H0000FFFF,"
                 "OutlineColour=&H00000000,"
+                "BackColour=&H00000000,"
                 "Bold=1,"
-                "Outline=3,"
-                "Shadow=1,"
+                "Outline=4,"
+                "Shadow=2,"
                 "Alignment=2,"
-                "MarginV=120"
+                "MarginV=200"
             )
             cmd = (
                 "ffmpeg -y -i " + video_path +
@@ -123,10 +138,7 @@ class ProductionAgent:
             result = os.system(cmd)
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
-                return subtitled_path
-        except Exception as e:
-            print("Subtitle error: " + str(e))
-        return video_path
+                ret
 
     def get_audio_duration(self, audio_path):
         try:
