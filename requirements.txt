@@ -5,3 +5,5 @@ google-api-python-client
 fal-client
 requests
 Pillow
+openai
+edge-tts
