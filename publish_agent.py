@@ -1,6 +1,10 @@
 import os
 import json
 import base64
+import requests
+import fal_client
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -13,6 +17,8 @@ class PublishAgent:
             "https://www.googleapis.com/auth/youtube.upload",
             "https://www.googleapis.com/auth/youtube"
         ]
+        fal_key = os.environ.get("FAL_API_KEY", "")
+        os.environ["FAL_KEY"] = fal_key
 
     def upload(self, video_path, video_data):
         youtube = self._get_youtube_client()
@@ -36,7 +42,82 @@ class PublishAgent:
         response = request.execute()
         video_id = response["id"]
         print("Uploaded: https://youtube.com/watch?v=" + video_id)
+
+        print("Creating thumbnail...")
+        thumbnail_path = self._create_thumbnail(video_data)
+        if thumbnail_path:
+            try:
+                youtube.thumbnails().set(
+                    videoId=video_id,
+                    media_body=MediaFileUpload(thumbnail_path)
+                ).execute()
+                print("Thumbnail uploaded")
+            except Exception as e:
+                print("Thumbnail upload error: " + str(e))
+
         return video_id
+
+    def _create_thumbnail(self, video_data):
+        try:
+            title = video_data.get("title", "").replace("#Shorts", "").strip()
+            country = video_data.get("country", "")
+            concept = video_data.get("concept", "")
+            visual_style = video_data.get("visual_style", {})
+            period = video_data.get("period", "")
+            color_palette = visual_style.get("color_palette", "dark desaturated")
+            atmosphere = visual_style.get("atmosphere", "dramatic shadows")
+
+            prompt = (
+                "YouTube thumbnail, cinematic dark conspiracy thriller, "
+                + period + " era, " + country + " setting, "
+                + concept + ". "
+                + color_palette + " color palette, "
+                + atmosphere + " atmosphere. "
+                "Extremely dramatic, shocking, mysterious. "
+                "No text, no watermarks, photorealistic, 16:9 horizontal, "
+                "professional YouTube thumbnail composition, "
+                "dark vignette edges, center subject focus."
+            )
+
+            result = fal_client.subscribe(
+                "fal-ai/flux-pro",
+                arguments={
+                    "prompt": prompt,
+                    "image_size": "landscape_16_9",
+                    "num_images": 1,
+                    "safety_tolerance": "5"
+                }
+            )
+
+            if result and result.get("images") and len(result["images"]) > 0:
+                image_url = result["images"][0]["url"]
+                r = requests.get(image_url, timeout=30)
+                img = Image.open(BytesIO(r.content))
+                img = img.resize((1280, 720), Image.LANCZOS)
+                draw = ImageDraw.Draw(img)
+
+                words = title.upper().split()
+                mid = max(1, len(words) // 2)
+                line1 = " ".join(words[:mid])
+                line2 = " ".join(words[mid:]) if mid < len(words) else ""
+
+                for ox, oy in [(3, 3), (-3, -3), (3, -3), (-3, 3), (0, 4), (4, 0)]:
+                    draw.text((642 + ox, 562 + oy), line1, fill=(0, 0, 0), anchor="mm")
+                    if line2:
+                        draw.text((642 + ox, 632 + oy), line2, fill=(0, 0, 0), anchor="mm")
+
+                draw.text((640, 560), line1, fill=(255, 50, 50), anchor="mm")
+                if line2:
+                    draw.text((640, 630), line2, fill=(255, 255, 255), anchor="mm")
+
+                thumbnail_path = os.path.join("output", "thumbnail.jpg")
+                img.save(thumbnail_path, "JPEG", quality=95)
+                print("Thumbnail created with Flux Pro")
+                return thumbnail_path
+
+        except Exception as e:
+            print("Thumbnail error: " + str(e))
+        return None
 
     def _get_youtube_client(self):
         token_b64 = os.environ.get("YOUTUBE_TOKEN")
