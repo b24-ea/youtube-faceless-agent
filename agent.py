@@ -38,6 +38,11 @@ def main():
         return
     audio_duration = production.get_audio_duration(audio_path)
 
+    print("\nDownloading background music...")
+    music_path = production.get_background_music()
+    if music_path:
+        audio_path = production.mix_audio_with_music(audio_path, music_path, audio_duration)
+
     print("\nGenerating visuals (Flux Pro + Veo 3)...")
     video_path = video_gen.generate(video_data)
     if not video_path or not os.path.exists(video_path):
