@@ -18,6 +18,53 @@ class ProductionAgent:
         self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
+        
+    def get_background_music(self):
+        try:
+            music_path = os.path.join(self.output_dir, "music.mp3")
+            urls = [
+                "https://cdn.pixabay.com/audio/2023/03/13/audio_3eda843cae.mp3",
+                "https://cdn.pixabay.com/audio/2022/10/25/audio_fd44b6fdc0.mp3",
+                "https://cdn.pixabay.com/audio/2023/01/09/audio_677b7e5f42.mp3",
+                "https://cdn.pixabay.com/audio/2022/11/22/audio_0d0e0e0e0e.mp3",
+            ]
+            for url in urls:
+                try:
+                    r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://pixabay.com/"})
+                    if r.status_code == 200 and len(r.content) > 50000:
+                        with open(music_path, "wb") as f:
+                            f.write(r.content)
+                        print("Background music downloaded: " + str(len(r.content)) + " bytes")
+                        return music_path
+                    else:
+                        print("Music URL failed: " + str(r.status_code))
+                except Exception as ex:
+                    print("Music URL error: " + str(ex))
+                    continue
+        except Exception as e:
+            print("Music error: " + str(e))
+        return None
+
+    def mix_audio_with_music(self, voice_path, music_path, audio_duration):
+        try:
+            mixed_path = os.path.join(self.output_dir, "mixed_audio.mp3")
+            cmd = (
+                "ffmpeg -y "
+                "-i " + voice_path + " "
+                "-stream_loop -1 -i " + music_path + " "
+                "-filter_complex \"[1:a]volume=0.08[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
+                "-map \"[out]\" "
+                "-t " + str(int(audio_duration)) + " "
+                "-c:a libmp3lame " + mixed_path
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(mixed_path) and os.path.getsize(mixed_path) > 1000:
+                print("Music mixed successfully")
+                return mixed_path
+            print("Music mix failed, using voice only")
+        except Exception as e:
+            print("Mix error: " + str(e))
+        return voice_path
 
     def generate_audio(self, script_data):
         script = self._build_full_script(script_data)
