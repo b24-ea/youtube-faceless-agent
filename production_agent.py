@@ -19,7 +19,7 @@ class ProductionAgent:
         self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         os.makedirs(self.output_dir, exist_ok=True)
-        
+
     def get_background_music(self):
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
@@ -186,9 +186,12 @@ class ProductionAgent:
             result = os.system(cmd)
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
-                ret
-                
-     def add_outro(self, video_path, audio_duration):
+                return subtitled_path
+        except Exception as e:
+            print("Subtitle error: " + str(e))
+        return video_path
+
+    def add_outro(self, video_path, audio_duration):
         try:
             outro_image_path = os.path.join(self.output_dir, "outro.png")
             outro_video_path = os.path.join(self.output_dir, "outro_clip.mp4")
