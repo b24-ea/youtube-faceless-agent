@@ -187,7 +187,7 @@ class ProductionAgent:
             ]
             result = subprocess.run(cmd, capture_output=True)
             result = result.returncode
-            result = os.system(cmd)
+    
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
                 return subtitled_path
