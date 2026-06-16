@@ -179,12 +179,14 @@ class ProductionAgent:
                 "Alignment=2,"
                 "MarginV=200"
             )
-            cmd = (
-                "ffmpeg -y -i " + video_path +
-                " -vf \"subtitles=" + srt_path +
-                ":force_style='" + style + "'\" " +
-                "-c:a copy " + subtitled_path
-            )
+            import subprocess
+            cmd = [
+                "ffmpeg", "-y", "-i", video_path,
+                "-vf", "subtitles=" + srt_path + ":force_style='" + style + "'",
+                "-c:a", "copy", subtitled_path
+            ]
+            result = subprocess.run(cmd, capture_output=True)
+            result = result.returncode
             result = os.system(cmd)
             if result == 0 and os.path.exists(subtitled_path):
                 print("Subtitles added")
