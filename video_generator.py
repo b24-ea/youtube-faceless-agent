@@ -131,8 +131,7 @@ class VideoGenerator:
                 norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
                 cmd = (
                     "ffmpeg -y -i " + clip +
-                    " -vf scale=1080:1920:force_original_aspect_ratio=decrease,"
-                    "pad=1080:1920:(ow-iw)/2:(oh-ih)/2 "
+                    " -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2\" " +
                     "-c:v libx264 -an " + norm_path
                 )
                 os.system(cmd)
