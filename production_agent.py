@@ -168,7 +168,7 @@ class ProductionAgent:
             subtitled_path = os.path.join(self.output_dir, "final_subtitled.mp4")
             style = (
                 "FontName=Impact,"
-                "FontSize=24,"
+                "FontSize=14,"
                 "PrimaryColour=&H00FFFFFF,"
                 "SecondaryColour=&H0000FFFF,"
                 "OutlineColour=&H00000000,"
@@ -177,7 +177,7 @@ class ProductionAgent:
                 "Outline=4,"
                 "Shadow=2,"
                 "Alignment=2,"
-                "MarginV=200"
+                "MarginV=80"
             )
             import subprocess
             cmd = [
