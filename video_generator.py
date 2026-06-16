@@ -73,10 +73,7 @@ class VideoGenerator:
                 "fal-ai/flux-pro",
                 arguments={
                     "prompt": prompt + " Dark cinematic atmosphere, dramatic lighting, photorealistic, 9:16 vertical.",
-                    "image_size": {
-                        "width": 1080,
-                        "height": 1920
-                    },
+                    "image_size": "portrait_4_3",
                     "num_images": 1,
                     "safety_tolerance": "5"
                 }
