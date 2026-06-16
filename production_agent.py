@@ -24,15 +24,17 @@ class ProductionAgent:
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
             urls = [
-                "https://cdn.pixabay.com/audio/2024/02/21/audio_9a4f6e2c5b.mp3",
-                "https://cdn.pixabay.com/audio/2023/10/30/audio_9b1a2c3d4e.mp3",
-                "https://cdn.pixabay.com/audio/2022/08/02/audio_2dde668d05.mp3",
-                "https://cdn.pixabay.com/audio/2023/05/16/audio_166b9c8b6d.mp3",
+                "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3",
+                "https://audionautix.com/Music/Tense.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Fog.mp3",
+                "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Investigations/Kevin_MacLeod_-_Investigations.mp3",
             ]
             for url in urls:
                 try:
-                    r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://pixabay.com/"})
-                    if r.status_code == 200 and len(r.content) > 50000:
+                    r = requests.get(url, timeout=30, headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    })
+                    if r.status_code == 200 and len(r.content) > 10000:
                         with open(music_path, "wb") as f:
                             f.write(r.content)
                         print("Background music downloaded: " + str(len(r.content)) + " bytes")
