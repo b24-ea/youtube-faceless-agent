@@ -24,10 +24,10 @@ class ProductionAgent:
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
             urls = [
-                "https://cdn.pixabay.com/audio/2023/03/13/audio_3eda843cae.mp3",
-                "https://cdn.pixabay.com/audio/2022/10/25/audio_fd44b6fdc0.mp3",
-                "https://cdn.pixabay.com/audio/2023/01/09/audio_677b7e5f42.mp3",
-                "https://cdn.pixabay.com/audio/2022/11/22/audio_0d0e0e0e0e.mp3",
+                "https://cdn.pixabay.com/audio/2024/02/21/audio_9a4f6e2c5b.mp3",
+                "https://cdn.pixabay.com/audio/2023/10/30/audio_9b1a2c3d4e.mp3",
+                "https://cdn.pixabay.com/audio/2022/08/02/audio_2dde668d05.mp3",
+                "https://cdn.pixabay.com/audio/2023/05/16/audio_166b9c8b6d.mp3",
             ]
             for url in urls:
                 try:
