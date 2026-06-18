@@ -2,48 +2,28 @@ import json
 import random
 
 
-prompt = (
-            "You are creating a viral atmospheric horror YouTube Shorts video.\n\n"
-            "Style: " + style + "\n"
-            "Mood: " + mood + "\n\n"
-            "Create 8 cinematic horror visuals for a 30-second video.\n"
-            "IMPORTANT: All 8 visuals must take place in the SAME location: " + style + "\n"
-            "The video tells ONE continuous horror story in this single location.\n"
-            "Camera slowly explores deeper into the location — like a found footage journey.\n"
-            "Each visual is the next moment in the same continuous scene.\n"
-            "NO dialogue, NO narration, NO text on screen.\n"
-            "ONLY pure atmospheric horror visuals.\n"
-            "Mix of VEO (video clips) and FLUX (still images).\n"
-            "Build tension progressively — start unsettling, end terrifying.\n\n"
-            "Story structure:\n"
-            "Visual 1: Exterior or entrance of " + style + " — establishing dread\n"
-            "Visual 2: First step inside — dark corridor or entry\n"
-            "Visual 3: Something slightly wrong noticed — subtle detail\n"
-            "Visual 4: Going deeper — another room or area\n"
-            "Visual 5: Clear sign something is wrong — disturbing discovery\n"
-            "Visual 6: Something moves or is heard — tension peaks\n"
-            "Visual 7: The worst reveal — maximum dread\n"
-            "Visual 8: Final haunting image — something watching\n\n"
-            "VEO prompts must have:\n"
-            "- Slow, creeping camera movements (push in, tilt, pan)\n"
-            "- Subtle movement (shadows shifting, dust falling, door moving)\n"
-            "- Continuous with previous shot — same location, next moment\n"
-            "- Cinematic dark lighting, film grain\n\n"
-            "FLUX prompts must have:\n"
-            "- Same location, different angle or detail\n"
-            "- Something slightly wrong in the image\n"
-            "- Dark, desaturated, photorealistic horror photography\n\n"
-            "IMPORTANT: English only. No text overlays.\n\n"
-            "Return ONLY this JSON:\n"
-            "{\n"
-            "  \"title\": \"atmospheric horror title about " + style + " under 60 chars with #Shorts #horror\",\n"
-            "  \"style\": \"" + style + "\",\n"
-            "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"slow approach toward entrance of " + style + ", establishing dread, cinematic horror, film grain, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"first step inside " + style + ", dark corridor stretching ahead, photorealistic horror photography, desaturated\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"slow push deeper into " + style + ", something slightly wrong in the shadows, creeping camera, cinematic, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"disturbing detail discovered inside " + style + ", close up, photorealistic horror, dark\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"going further into " + style + ", tension
+HORROR_STYLES = [
+    {"style": "abandoned mental asylum at night", "mood": "dread and isolation"},
+    {"style": "deep ocean trench with unknown creature", "mood": "cosmic horror"},
+    {"style": "dark forest with moving shadows", "mood": "primal fear"},
+    {"style": "empty hospital corridor at 3am", "mood": "dread and silence"},
+    {"style": "underground cave system with strange sounds", "mood": "claustrophobic terror"},
+    {"style": "abandoned Soviet military bunker", "mood": "cold war dread"},
+    {"style": "dense fog covered cemetery at midnight", "mood": "supernatural fear"},
+    {"style": "flooded basement with something moving", "mood": "trapped horror"},
+    {"style": "dark church with flickering candles", "mood": "religious dread"},
+    {"style": "empty subway tunnel with distant sounds", "mood": "urban horror"},
+    {"style": "old Victorian mansion at stormy night", "mood": "gothic terror"},
+    {"style": "abandoned factory with machinery sounds", "mood": "industrial horror"},
+    {"style": "dark lighthouse during violent storm", "mood": "isolation and dread"},
+    {"style": "ancient ruins at night with strange lights", "mood": "archaeological horror"},
+    {"style": "empty airport terminal at 4am", "mood": "liminal space horror"},
+    {"style": "dark lake surface with something beneath", "mood": "aquatic dread"},
+    {"style": "abandoned carnival at night", "mood": "uncanny terror"},
+    {"style": "nuclear power plant after meltdown", "mood": "apocalyptic dread"},
+    {"style": "dark mountain cave with strange markings", "mood": "prehistoric terror"},
+    {"style": "empty shopping mall at midnight", "mood": "liminal horror"},
+]
 
 USED_STYLES_FILE = "used_styles.json"
 
@@ -80,40 +60,47 @@ class ContentAgent:
             "Style: " + style + "\n"
             "Mood: " + mood + "\n\n"
             "Create 8 cinematic horror visuals for a 30-second video.\n"
+            "IMPORTANT: All 8 visuals must take place in the SAME location: " + style + "\n"
+            "The video tells ONE continuous horror story in this single location.\n"
+            "Camera slowly explores deeper into the location like a found footage journey.\n"
+            "Each visual is the next moment in the same continuous scene.\n"
             "NO dialogue, NO narration, NO text on screen.\n"
             "ONLY pure atmospheric horror visuals.\n"
-            "Mix of VEO (video clips) and FLUX (still images).\n"
-            "Every 3-4 seconds a new visual.\n"
-            "Build tension from start to finish — start unsettling, end terrifying.\n\n"
-            "VEO prompts must have:\n"
-            "- Slow, creeping camera movements\n"
-            "- Subtle movement (shadows shifting, water dripping, door creaking)\n"
-            "- No sudden jump scares — slow building dread\n"
-            "- Cinematic dark lighting\n\n"
-            "FLUX prompts must have:\n"
-            "- Extreme atmospheric detail\n"
-            "- Something slightly wrong in the image\n"
-            "- Dark, desaturated colors\n"
-            "- Photorealistic horror photography style\n\n"
-            "IMPORTANT: English only. No text overlays in prompts.\n\n"
+            "Mix of VEO video clips and FLUX still images.\n"
+            "Build tension progressively, start unsettling, end terrifying.\n\n"
+            "Story structure:\n"
+            "Visual 1: Exterior or entrance of the location, establishing dread\n"
+            "Visual 2: First step inside, dark corridor or entry\n"
+            "Visual 3: Something slightly wrong noticed, subtle detail\n"
+            "Visual 4: Going deeper, another room or area\n"
+            "Visual 5: Clear sign something is wrong, disturbing discovery\n"
+            "Visual 6: Something moves or is heard, tension peaks\n"
+            "Visual 7: The worst reveal, maximum dread\n"
+            "Visual 8: Final haunting image, something watching\n\n"
+            "VEO prompts must have slow creeping camera movements, subtle movement like shadows "
+            "shifting or dust falling, continuous with previous shot in same location, "
+            "cinematic dark lighting and film grain.\n\n"
+            "FLUX prompts must have same location different angle or detail, something slightly "
+            "wrong in the image, dark desaturated photorealistic horror photography.\n\n"
+            "IMPORTANT: English only. No text overlays.\n\n"
             "Return ONLY this JSON:\n"
             "{\n"
             "  \"title\": \"atmospheric horror title under 60 chars with #Shorts #horror\",\n"
             "  \"style\": \"" + style + "\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"slow creeping camera push into " + style + ", cinematic horror, dark atmosphere, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"extreme detail shot of " + style + ", something slightly wrong, photorealistic horror, dark desaturated\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"slow tilt up revealing " + style + ", shadow movement, dread, cinematic, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"wide shot of " + style + ", unsettling details, horror photography, dark\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"something moves in the dark of " + style + ", barely visible, slow zoom, cinematic horror, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"close up detail " + style + ", disturbing element, photorealistic, horror\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"final reveal in " + style + ", maximum dread, slow camera pull back, cinematic, 9:16 vertical\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"haunting final image of " + style + ", something watching, horror photography, dark atmosphere\", \"duration\": 3}\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"slow approach toward entrance of " + style + ", establishing dread, cinematic horror, film grain, 9:16 vertical\", \"duration\": 4},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"first step inside " + style + ", dark corridor stretching ahead, photorealistic horror photography, desaturated\", \"duration\": 3},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"slow push deeper into " + style + ", something slightly wrong in the shadows, creeping camera, cinematic, 9:16 vertical\", \"duration\": 4},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"disturbing detail discovered inside " + style + ", close up, photorealistic horror, dark\", \"duration\": 3},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"going further into " + style + ", tension building, shadow movement, slow cinematic pan, 9:16 vertical\", \"duration\": 4},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"something wrong revealed in " + style + ", maximum unease, horror photography, desaturated dark\", \"duration\": 3},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"worst reveal inside " + style + ", maximum dread, slow zoom into darkness, cinematic horror, 9:16 vertical\", \"duration\": 4},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"final haunting image inside " + style + ", something watching from the dark, horror photography\", \"duration\": 3}\n"
             "  ],\n"
             "  \"description\": \"Pure atmospheric horror. No jump scares. Just dread. #horror #scary #atmospheric #shorts\",\n"
             "  \"tags\": [\"horror\", \"scary\", \"atmospheric\", \"shorts\", \"viral\", \"dark\", \"creepy\", \"dread\", \"haunted\", \"terror\"]\n"
             "}\n\n"
-            "No markdown, raw JSON only. Make every visual genuinely unsettling."
+            "No markdown, raw JSON only. Every visual must feel like the next moment in the same continuous horror journey."
         )
 
         response = self.client.messages.create(
@@ -140,14 +127,14 @@ class ContentAgent:
                 "title": "What Lives in the Dark #Shorts #horror",
                 "style": style,
                 "visuals": [
-                    {"type": "VEO", "prompt": "slow creeping camera push into " + style + ", cinematic horror, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "extreme detail " + style + ", something wrong, photorealistic horror, dark", "duration": 3},
-                    {"type": "VEO", "prompt": "shadow movement in " + style + ", slow zoom, dread, cinematic, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "wide shot " + style + ", unsettling, horror photography", "duration": 3},
-                    {"type": "VEO", "prompt": "something moves in " + style + ", barely visible, cinematic horror, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "close up " + style + ", disturbing, photorealistic horror", "duration": 3},
-                    {"type": "VEO", "prompt": "final reveal " + style + ", maximum dread, pull back, cinematic, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "haunting final image " + style + ", something watching, horror photography", "duration": 3}
+                    {"type": "VEO", "prompt": "slow approach toward entrance of " + style + ", establishing dread, cinematic horror, film grain, 9:16 vertical", "duration": 4},
+                    {"type": "FLUX", "prompt": "first step inside " + style + ", dark corridor, photorealistic horror photography, desaturated", "duration": 3},
+                    {"type": "VEO", "prompt": "slow push deeper into " + style + ", shadows, creeping camera, cinematic, 9:16 vertical", "duration": 4},
+                    {"type": "FLUX", "prompt": "disturbing detail inside " + style + ", close up, photorealistic horror, dark", "duration": 3},
+                    {"type": "VEO", "prompt": "going further into " + style + ", tension building, slow pan, cinematic, 9:16 vertical", "duration": 4},
+                    {"type": "FLUX", "prompt": "something wrong in " + style + ", maximum unease, horror photography, dark", "duration": 3},
+                    {"type": "VEO", "prompt": "worst reveal inside " + style + ", maximum dread, slow zoom, cinematic horror, 9:16 vertical", "duration": 4},
+                    {"type": "FLUX", "prompt": "final haunting image " + style + ", something watching from dark, horror photography", "duration": 3}
                 ],
                 "description": "Pure atmospheric horror. No jump scares. Just dread. #horror #scary #atmospheric #shorts",
                 "tags": ["horror", "scary", "atmospheric", "shorts", "viral", "dark", "creepy", "dread", "haunted", "terror"]
