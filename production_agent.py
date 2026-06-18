@@ -12,12 +12,33 @@ class ProductionAgent:
     def get_background_music(self):
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
-            urls = [
+            
+            horror_music_urls = [
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Fog.mp3",
-                "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Investigations/Kevin_MacLeod_-_Investigations.mp3",
-                "https://audionautix.com/Music/Tense.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Arcadia.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danse%20Macabre.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Eternal%20Procession.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Failing%20Defense.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Grieving%20Angel.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Horror%20Show.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Invariance.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lightless%20Dawn.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Malicious.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Midnight%20Tale.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%206%20-%20Air.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Phantasm.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sinister.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Tenebrous%20Brothers%20Carnival.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20House%20of%20Leaves.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Unholy%20Knight.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Who%20Likes%20to%20Party.mp3",
             ]
-            for url in urls:
+            
+            random.shuffle(horror_music_urls)
+            
+            for url in horror_music_urls:
                 try:
                     r = requests.get(url, timeout=30, headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -25,7 +46,7 @@ class ProductionAgent:
                     if r.status_code == 200 and len(r.content) > 10000:
                         with open(music_path, "wb") as f:
                             f.write(r.content)
-                        print("Background music downloaded: " + str(len(r.content)) + " bytes")
+                        print("Background music downloaded: " + url.split("/")[-1])
                         return music_path
                     else:
                         print("Music URL failed: " + str(r.status_code))
