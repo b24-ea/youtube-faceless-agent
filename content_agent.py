@@ -150,6 +150,7 @@ class ContentAgent:
     "visuals": [
     {"type": "VEO", "prompt": "single continuous shot, creature with too many limbs and eyes slowly turning to face camera, impossible anatomy, wrong geometry, visceral horror, dark oppressive atmosphere, slow cinematic movement, something that should not exist staring directly at viewer, 9:16 vertical", "duration": 15}
 ],
+            }
 
         video_data["niche"] = "nightmare_horror"
         return video_data
