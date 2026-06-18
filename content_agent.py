@@ -144,24 +144,24 @@ class ContentAgent:
             video_data = json.loads(content)
         except Exception:
             video_data = {
-                "title": "Something Is Wrong Here #Shorts #horror",
-                "format": fmt,
-                "concept": "A terrifying nightmare scenario unfolds",
-                "visuals": [
-                    {"type": "VEO", "prompt": "slow cinematic establishing shot, dark atmospheric location, dread building, film grain, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "horror photography, something slightly wrong, dark desaturated, photorealistic", "duration": 3},
-                    {"type": "VEO", "prompt": "slow push forward into darkness, shadow movement, cinematic horror, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "disturbing detail revealed, photorealistic horror, dark atmospheric", "duration": 4},
-                    {"type": "VEO", "prompt": "tension peaks, something moves, slow zoom, cinematic dread, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "maximum unease, horror photography, something watching, dark", "duration": 3},
-                    {"type": "VEO", "prompt": "reveal begins, horror escalates, cinematic wide shot, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "shocking discovery, photorealistic horror, dramatic dark", "duration": 4},
-                    {"type": "VEO", "prompt": "maximum terror, final reveal, slow pull back, cinematic horror, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "haunting final image, something watching from darkness, horror photography", "duration": 3}
-                ],
-                "description": "#nightmare #horror #scary #cursed #creepy #aivideo #shorts #viral",
-                "tags": ["nightmare", "horror", "scary", "cursed", "creepy", "aivideo", "shorts", "viral", "dark", "terror"]
-            }
+    "title": "Something Is Wrong Here #Shorts #horror",
+    "format": fmt,
+    "concept": "A terrifying nightmare scenario unfolds",
+    "visuals": [
+        {"type": "VEO", "prompt": "genuinely disturbing establishing shot, wrong anatomy in shadows, impossible geometry, creature with too many limbs lurking, dark visceral atmosphere, slow cinematic dread, 9:16 vertical", "duration": 4},
+        {"type": "FLUX", "prompt": "deeply disturbing horror photography, something fundamentally wrong with reality, extra limbs emerging from darkness, photorealistic nightmare, dark oppressive atmosphere", "duration": 3},
+        {"type": "VEO", "prompt": "slow push into darkness, creature that should not exist, impossible shadow movement, visceral cinematic horror, wrong number of eyes watching, 9:16 vertical", "duration": 4},
+        {"type": "FLUX", "prompt": "visceral unsettling detail revealed, anatomy that defies reality, photorealistic nightmare imagery, something fundamentally broken about this scene", "duration": 4},
+        {"type": "VEO", "prompt": "tension peaks, entity with too many joints moves wrong, slow zoom into impossible geometry, cinematic dread, something that should not exist, 9:16 vertical", "duration": 4},
+        {"type": "FLUX", "prompt": "maximum unease, horror photography, wrong anatomy watching from dark, reality fundamentally broken, photorealistic nightmare", "duration": 3},
+        {"type": "VEO", "prompt": "reveal begins, creature fully visible, too many limbs too many eyes, visceral horror escalates, cinematic wide shot, 9:16 vertical", "duration": 4},
+        {"type": "FLUX", "prompt": "shocking discovery, something that should not exist photographed in brutal detail, dark oppressive nightmare imagery, photorealistic horror", "duration": 4},
+        {"type": "VEO", "prompt": "maximum terror, final reveal, impossible anatomy fully exposed, slow pull back from nightmare creature, visceral cinematic horror, 9:16 vertical", "duration": 4},
+        {"type": "FLUX", "prompt": "haunting final image, entity with wrong geometry watching from darkness, something fundamentally wrong with reality, photorealistic nightmare photography", "duration": 3}
+    ],
+    "description": "#nightmare #horror #scary #cursed #creepy #aivideo #shorts #viral",
+    "tags": ["nightmare", "horror", "scary", "cursed", "creepy", "aivideo", "shorts", "viral", "dark", "terror"]
+}
 
         video_data["niche"] = "nightmare_horror"
         return video_data
