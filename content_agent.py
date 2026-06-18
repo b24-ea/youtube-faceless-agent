@@ -2,125 +2,119 @@ import json
 import random
 
 
-NIGHTMARE_FORMATS = [
-    {
-        "format": "monster_attack",
-        "description": "Colossal creature attacks a city or location",
-        "style": "epic cinematic blockbuster horror"
-    },
-    {
-        "format": "cursed_footage",
-        "description": "Seemingly innocent moment reveals something terrifying",
-        "style": "found footage realistic cursed video"
-    },
-    {
-        "format": "atmospheric_horror",
-        "description": "Slow exploration of haunted location building dread",
-        "style": "atmospheric cinematic horror photography"
-    },
-    {
-        "format": "cosmic_horror",
-        "description": "Incomprehensible entity from space or other dimension",
-        "style": "cosmic lovecraftian cinematic horror"
-    },
-    {
-        "format": "psychological_nightmare",
-        "description": "Reality distorts and breaks down in terrifying ways",
-        "style": "surreal psychological horror dreamlike"
-    },
-    {
-        "format": "stalker_chase",
-        "description": "Someone or something hunts a person through darkness",
-        "style": "tense thriller horror POV cinematic"
-    },
+HORROR_STYLES = [
+    {"style": "abandoned mental asylum at night with shadowy figures in corridors", "mood": "dread and isolation"},
+    {"style": "deep ocean trench with massive unknown creature circling below", "mood": "cosmic horror"},
+    {"style": "dark forest where trees have human faces and something follows", "mood": "primal fear"},
+    {"style": "empty hospital corridor at 3am with boogeyman at the end", "mood": "dread and silence"},
+    {"style": "underground cave system where walls are covered in human handprints", "mood": "claustrophobic terror"},
+    {"style": "abandoned Soviet military bunker with something alive inside", "mood": "cold war dread"},
+    {"style": "dense fog covered cemetery where the dead are standing upright", "mood": "supernatural fear"},
+    {"style": "flooded basement with pale hands reaching from the black water", "mood": "trapped horror"},
+    {"style": "dark church where the congregation has no faces", "mood": "religious dread"},
+    {"style": "empty subway tunnel where something breathes in the darkness", "mood": "urban horror"},
+    {"style": "old Victorian mansion where mirrors show wrong reflections", "mood": "gothic terror"},
+    {"style": "abandoned factory where machines run with no one operating them", "mood": "industrial horror"},
+    {"style": "dark lighthouse where the light reveals something circling outside", "mood": "isolation and dread"},
+    {"style": "ancient ruins where carved faces on walls slowly turn to look", "mood": "archaeological horror"},
+    {"style": "empty airport terminal at 4am with a child standing still in darkness", "mood": "liminal space horror"},
+    {"style": "dark lake surface where a pale figure slowly rises from below", "mood": "aquatic dread"},
+    {"style": "abandoned carnival at night where clown statues move between blinks", "mood": "uncanny terror"},
+    {"style": "nuclear power plant where glowing figures walk through walls", "mood": "apocalyptic dread"},
+    {"style": "dark mountain cave where ancient evil has slept for centuries and wakes", "mood": "prehistoric terror"},
+    {"style": "empty shopping mall at midnight where mannequins follow your movement", "mood": "liminal horror"},
+    {"style": "dense fog covered playground where swings move with no children", "mood": "childhood nightmare"},
+    {"style": "abandoned house where every room has a figure standing in the corner", "mood": "home invasion dread"},
+    {"style": "dark bedroom where something under the bed slowly pulls itself out", "mood": "boogeyman terror"},
+    {"style": "empty school hallway at night with lockers that open by themselves", "mood": "institutional dread"},
+    {"style": "dark well in a field where pale hands grip the edges from inside", "mood": "folklore horror"},
 ]
 
-USED_CONCEPTS_FILE = "used_concepts.json"
+USED_STYLES_FILE = "used_styles.json"
 
 
 class ContentAgent:
     def __init__(self, client):
         self.client = client
 
-    def _get_unused_concept(self):
+    def _get_unused_style(self):
         try:
-            with open(USED_CONCEPTS_FILE, "r") as f:
+            with open(USED_STYLES_FILE, "r") as f:
                 used = json.load(f)
         except Exception:
             used = []
-        if not isinstance(used, list):
+        available = [s for s in HORROR_STYLES if s["style"] not in used]
+        if not available:
             used = []
-        return used
-
-    def _save_used_concept(self, concept, used):
-        used.append(concept)
-        with open(USED_CONCEPTS_FILE, "w") as f:
+            available = HORROR_STYLES
+        chosen = random.choice(available)
+        used.append(chosen["style"])
+        with open(USED_STYLES_FILE, "w") as f:
             json.dump(used, f)
+        return chosen
 
     def generate_video(self, niche=None, analytics_data=None, used_concepts=None):
-        used = self._get_unused_concept()
-        nightmare_format = random.choice(NIGHTMARE_FORMATS)
-        fmt = nightmare_format["format"]
-        description = nightmare_format["description"]
-        style = nightmare_format["style"]
-
-        print("Format: " + fmt)
-        print("Description: " + description)
+        chosen = self._get_unused_style()
+        style = chosen["style"]
+        mood = chosen["mood"]
+        print("Style: " + style)
+        print("Mood: " + mood)
 
         prompt = (
-            "You are creating a viral nightmare horror YouTube Shorts video.\n\n"
-            "Format: " + fmt + "\n"
-            "Description: " + description + "\n"
-            "Visual style: " + style + "\n\n"
-            "Create a completely unique, terrifying concept for this format.\n"
-"CRITICAL: Every video must have a DIFFERENT location and a DIFFERENT creature/entity.\n"
-"Locations must vary wildly: deep ocean, Arctic tundra, ancient jungle temple, "
-"Soviet bunker, flooded city, volcanic island, desert ruins, frozen forest, "
-"medieval dungeon, space station, underground cave, Victorian mansion, "
-"abandoned nuclear plant, misty mountains, dark swamp, etc.\n"
-"Creatures/entities must be bizarre and original: not standard zombies or vampires.\n"
-"Think: impossible geometry creatures, entities made of shadow/water/static, "
-"things with too many eyes or limbs, creatures that defy physics, "
-"beings from other dimensions, ancient gods awakening, parasitic entities, "
-"creatures that mimic humans but wrong, dark matter beings, sound-based horrors, etc.\n"
-"Make each concept feel like something never seen before.\n\n"
-            "The video is 40-45 seconds long.\n"
+            "You are creating a viral atmospheric horror YouTube Shorts video.\n\n"
+            "Style: " + style + "\n"
+            "Mood: " + mood + "\n\n"
+            "Create 10 cinematic horror visuals for a 45-second video.\n"
+            "IMPORTANT: All 10 visuals must take place in the SAME location: " + style + "\n"
+            "The video tells ONE continuous horror story in this single location.\n"
+            "Camera slowly explores deeper into the location like a found footage journey.\n"
+            "Each visual is the next moment in the same continuous scene.\n"
             "NO dialogue, NO narration, NO text on screen.\n"
-            "ONLY pure cinematic horror visuals.\n"
-            "10 visuals total, mix of VEO and FLUX.\n"
-            "Every 3-4 seconds a new visual.\n"
-            "Build tension from start to maximum terror at the end.\n\n"
-            "Format-specific rules:\n\n"
-            "If monster_attack: Show scale progression — first hint, then partial reveal, then full devastating reveal. Cinematic wide shots.\n\n"
-            "If cursed_footage: Start completely normal and innocent. Slowly introduce something wrong. End with pure terror. Found footage VHS aesthetic.\n\n"
-            "If atmospheric_horror: Single location, continuous journey deeper in. Each shot reveals something worse. Film grain, slow camera.\n\n"
-            "If cosmic_horror: Something that should not exist. Incomprehensible scale. Reality breaking. Dark cosmic aesthetic.\n\n"
-            "If psychological_nightmare: Reality distorts. What was safe becomes wrong. Dreamlike but terrifying. Surreal visuals.\n\n"
-            "If stalker_chase: POV or close third person. Something following. Darkness closing in. Tense handheld camera.\n\n"
-            "VEO prompts: slow cinematic camera movements, atmospheric lighting, no sudden cuts, build dread.\n"
-            "FLUX prompts: photorealistic horror photography, something wrong in the image, dark desaturated.\n\n"
-            "IMPORTANT: English only. No text overlays. Every concept must be completely original and genuinely terrifying.\n\n"
+            "ONLY pure atmospheric horror visuals.\n"
+            "Mix of VEO video clips and FLUX still images.\n"
+            "Build tension progressively, start unsettling, end terrifying.\n\n"
+"NIGHTMARE RULES:\n"
+"- Every video must feel like a real nightmare, not a movie\n"
+"- Include classic nightmare elements: boogeyman, ghosts, pale figures, wrong faces\n"
+"- Locations must feel deeply wrong and corrupted\n"
+"- Creatures must be humanoid but fundamentally broken: wrong proportions, too many joints, blank faces, hollow eyes\n"
+"- Use childhood fears: things under the bed, figures in corners, something following\n"
+"- The horror must feel PERSONAL, like it is coming for the viewer\n\n"
+            "Story structure:\n"
+            "Visual 1: Exterior or entrance, establishing dread\n"
+            "Visual 2: First step inside, dark corridor or entry\n"
+            "Visual 3: Something slightly wrong noticed, subtle detail\n"
+            "Visual 4: Going deeper, another room or area\n"
+            "Visual 5: Clear sign something is wrong\n"
+            "Visual 6: Something moves or is heard, tension peaks\n"
+            "Visual 7: Disturbing discovery\n"
+            "Visual 8: The worst reveal begins\n"
+            "Visual 9: Maximum dread, creature or entity partially visible\n"
+            "Visual 10: Final haunting image, something watching\n\n"
+            "VEO prompts MUST be: genuinely disturbing and unsettling scene, wrong anatomy, impossible geometry, creature with too many limbs or eyes, dark visceral imagery, slow cinematic movement, something that should not exist. NEVER generate safe or neutral visuals.\n"
+            "FLUX prompts MUST be: deeply disturbing horror photography, visceral and unsettling, something fundamentally wrong with reality, dark and oppressive atmosphere, photorealistic nightmare imagery. NEVER generate calm or neutral images.\n\n"
+            "REJECT any visual idea that is not genuinely terrifying. Every single visual must make the viewer deeply uncomfortable.\n\n"
+            "IMPORTANT: English only. No text overlays.\n\n"
             "Return ONLY this JSON:\n"
             "{\n"
-            "  \"title\": \"terrifying nightmare title under 60 chars with #Shorts #horror\",\n"
-            "  \"format\": \"" + fmt + "\",\n"
-            "  \"concept\": \"one sentence describing the unique nightmare concept\",\n"
+            "  \"title\": \"atmospheric horror title under 60 chars with #Shorts #horror\",\n"
+            "  \"style\": \"" + style + "\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 3},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 3}\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"slow approach toward entrance of " + style + ", establishing dread, cinematic horror, film grain, 9:16 vertical\", \"duration\": 5},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"first step inside " + style + ", dark corridor stretching ahead, photorealistic horror photography, desaturated\", \"duration\": 4},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"slow push deeper into " + style + ", something slightly wrong in the shadows, creeping camera, cinematic, 9:16 vertical\", \"duration\": 5},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"disturbing detail discovered inside " + style + ", close up, photorealistic horror, dark\", \"duration\": 4},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"going further into " + style + ", tension building, shadow movement, slow cinematic pan, 9:16 vertical\", \"duration\": 5},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"something wrong revealed in " + style + ", maximum unease, horror photography, desaturated dark\", \"duration\": 4},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"disturbing discovery inside " + style + ", visceral horror, slow zoom, cinematic, 9:16 vertical\", \"duration\": 5},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"worst reveal beginning in " + style + ", deeply unsettling, photorealistic nightmare, dark\", \"duration\": 4},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"creature or entity partially visible in " + style + ", maximum dread, slow pull back, cinematic horror, 9:16 vertical\", \"duration\": 5},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"final haunting image inside " + style + ", something watching from the dark, nightmare photography\", \"duration\": 4}\n"
             "  ],\n"
-            "  \"description\": \"#nightmare #horror #scary #cursed #creepy #aivideo #shorts #viral\",\n"
-            "  \"tags\": [\"nightmare\", \"horror\", \"scary\", \"cursed\", \"creepy\", \"aivideo\", \"shorts\", \"viral\", \"dark\", \"terror\"]\n"
+            "  \"description\": \"Pure atmospheric horror. No jump scares. Just dread. #horror #scary #atmospheric #shorts #nightmare\",\n"
+            "  \"tags\": [\"horror\", \"scary\", \"atmospheric\", \"shorts\", \"viral\", \"dark\", \"creepy\", \"dread\", \"haunted\", \"nightmare\"]\n"
             "}\n\n"
-            "No markdown, raw JSON only. Make it genuinely terrifying and completely original."
+            "No markdown, raw JSON only. Every visual must feel like the next moment in the same continuous horror journey."
         )
 
         response = self.client.messages.create(
@@ -144,16 +138,26 @@ class ContentAgent:
             video_data = json.loads(content)
         except Exception:
             video_data = {
-    "title": "Something Is Wrong Here #Shorts #horror",
-    "format": fmt,
-    "concept": "A terrifying nightmare scenario unfolds",
-    "visuals": [
-    {"type": "VEO", "prompt": "single continuous shot, creature with too many limbs and eyes slowly turning to face camera, impossible anatomy, wrong geometry, visceral horror, dark oppressive atmosphere, slow cinematic movement, something that should not exist staring directly at viewer, 9:16 vertical", "duration": 15}
-],
+                "title": "What Lives in the Dark #Shorts #horror",
+                "style": style,
+                "visuals": [
+                    {"type": "VEO", "prompt": "slow approach toward entrance of " + style + ", establishing dread, cinematic horror, film grain, 9:16 vertical", "duration": 5},
+                    {"type": "FLUX", "prompt": "first step inside " + style + ", dark corridor, photorealistic horror photography, desaturated", "duration": 4},
+                    {"type": "VEO", "prompt": "slow push deeper into " + style + ", shadows, creeping camera, cinematic, 9:16 vertical", "duration": 5},
+                    {"type": "FLUX", "prompt": "disturbing detail inside " + style + ", close up, photorealistic horror, dark", "duration": 4},
+                    {"type": "VEO", "prompt": "going further into " + style + ", tension building, slow pan, cinematic, 9:16 vertical", "duration": 5},
+                    {"type": "FLUX", "prompt": "something wrong in " + style + ", maximum unease, horror photography, dark", "duration": 4},
+                    {"type": "VEO", "prompt": "disturbing discovery in " + style + ", visceral horror, slow zoom, cinematic, 9:16 vertical", "duration": 5},
+                    {"type": "FLUX", "prompt": "worst reveal in " + style + ", deeply unsettling, nightmare photography, dark", "duration": 4},
+                    {"type": "VEO", "prompt": "creature partially visible in " + style + ", maximum dread, slow pull back, cinematic, 9:16 vertical", "duration": 5},
+                    {"type": "FLUX", "prompt": "final haunting image " + style + ", something watching from dark, nightmare photography", "duration": 4}
+                ],
+                "description": "Pure atmospheric horror. No jump scares. Just dread. #horror #scary #atmospheric #shorts #nightmare",
+                "tags": ["horror", "scary", "atmospheric", "shorts", "viral", "dark", "creepy", "dread", "haunted", "nightmare"]
             }
 
-        video_data["niche"] = "nightmare_horror"
+        video_data["niche"] = "horror"
         return video_data
 
     def _get_performance_insight(self, analytics_data):
-        return "Focus on diverse nightmare horror formats."
+        return "Focus on atmospheric horror content."
