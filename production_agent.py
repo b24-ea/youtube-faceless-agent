@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import random
 from PIL import Image, ImageDraw
