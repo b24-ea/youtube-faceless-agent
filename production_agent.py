@@ -13,28 +13,78 @@ class ProductionAgent:
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
             
-            horror_music_urls = [
+            def get_background_music(self):
+        try:
+            music_path = os.path.join(self.output_dir, "music.mp3")
+            
+            creepy_music_urls = [
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Fog.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Arcadia.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danse%20Macabre.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Eternal%20Procession.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Failing%20Defense.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Grieving%20Angel.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Horror%20Show.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Invariance.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lightless%20Dawn.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Malicious.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Midnight%20Tale.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Invariance.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%206%20-%20Air.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Phantasm.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sinister.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Tenebrous%20Brothers%20Carnival.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20House%20of%20Leaves.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Unholy%20Knight.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Phantasm.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Eternal%20Procession.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Grieving%20Angel.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Malicious.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sinister.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Failing%20Defense.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3",
-                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Who%20Likes%20to%20Party.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Unholy%20Knight.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Horror%20Show.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Tenebrous%20Brothers%20Carnival.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Midnight%20Tale.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Arcadia.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%201%20-%20A%20Beginning.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%202%20-%20Turn.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%203%20-%20Convergence.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%204%20-%20Release.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%205%20-%20Dissolution.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/At%20Rest.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Backed%20Vibes%20Clean.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Black%20Vortex.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cold%20Funk.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Darkness%20Is%20Coming.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Evening%20of%20Chaos.mp3",
+                "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Nowhere%20Land.mp3",
             ]
+            
+            used_music_file = os.path.join(self.output_dir, "used_music.json")
+            try:
+                with open("used_music.json", "r") as f:
+                    used_music = json.load(f)
+            except Exception:
+                used_music = []
+            
+            available_music = [u for u in creepy_music_urls if u not in used_music]
+            if not available_music:
+                used_music = []
+                available_music = creepy_music_urls
+            
+            random.shuffle(available_music)
+            
+            for url in available_music:
+                try:
+                    r = requests.get(url, timeout=30, headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    })
+                    if r.status_code == 200 and len(r.content) > 10000:
+                        with open(music_path, "wb") as f:
+                            f.write(r.content)
+                        used_music.append(url)
+                        with open("used_music.json", "w") as f:
+                            json.dump(used_music, f)
+                        print("Music: " + url.split("/")[-1].replace("%20", " "))
+                        return music_path
+                    else:
+                        print("Music failed: " + str(r.status_code))
+                except Exception as ex:
+                    print("Music error: " + str(ex))
+                    continue
+        except Exception as e:
+            print("Music error: " + str(e))
+        return None
             
             random.shuffle(horror_music_urls)
             
