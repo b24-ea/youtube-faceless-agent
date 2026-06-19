@@ -82,6 +82,34 @@ CREATURES = [
 
 FORMAT_SEQUENCE_FILE = "format_sequence.json"
 
+TENSION_ARC = """
+TENSION ARC — STRICTLY FOLLOW THIS 8-SHOT STRUCTURE:
+
+SHOT 1 [HOOK - 0-4s]: Something is WRONG but not visible. The environment feels off.
+  A detail that should not exist. No creature. Pure unease. Make the viewer ask "wait... what is that?"
+
+SHOT 2 [MYSTERY - 4-8s]: A second wrong detail. Still no creature. The wrongness deepens.
+  Something moved. Something changed. The viewer leans in.
+
+SHOT 3 [FIRST SIGN - 8-13s]: A shadow. A shape. NOT the creature — just evidence it exists.
+  A handprint. A silhouette. Eyes in the darkness. The viewer's heart rate rises.
+
+SHOT 4 [DREAD - 13-17s]: The creature is ALMOST visible. Partially behind something.
+  Wrong anatomy hinted — too tall, wrong number of limbs. Viewer knows something is there.
+
+SHOT 5 [ESCALATION - 17-22s]: The creature MOVES. Still partially hidden but undeniably real.
+  Camera shakes slightly. The environment reacts — lights flicker, water ripples, shadows shift.
+
+SHOT 6 [CONFRONTATION - 22-27s]: Face to face moment. Creature partially revealed.
+  Maximum dread. The viewer cannot look away. Something terrible is about to happen.
+
+SHOT 7 [PEAK TERROR - 27-31s]: THE REVEAL. Creature fully visible. Wrong in every way.
+  Maximum horror. Something the viewer will remember. Visceral, disturbing, inescapable.
+
+SHOT 8 [AFTERMATH - 31-35s]: Silence. Then one final wrong detail.
+  The creature is gone — but something has changed. The horror lingers. Cut to black.
+"""
+
 
 class ContentAgent:
     def __init__(self, client):
@@ -93,15 +121,15 @@ class ContentAgent:
                 data = json.load(f)
         except Exception:
             data = {"index": 0}
-        
+
         formats = ["HORROR", "NIGHTMARE", "CHARACTER"]
         current_index = data.get("index", 0)
         current_format = formats[current_index % 3]
-        
+
         data["index"] = (current_index + 1) % 3
         with open(FORMAT_SEQUENCE_FILE, "w") as f:
             json.dump(data, f)
-        
+
         return current_format
 
     def _get_unused_scenario(self, scenario_list, used_key):
@@ -111,12 +139,12 @@ class ContentAgent:
                 used = json.load(f)
         except Exception:
             used = []
-        
+
         available = [s for s in scenario_list if s not in used]
         if not available:
             used = []
             available = scenario_list
-        
+
         chosen = random.choice(available)
         used.append(chosen)
         with open(used_file, "w") as f:
@@ -139,43 +167,41 @@ class ContentAgent:
         print("Scenario: " + scenario[:60])
         creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
+
         prompt = (
-            "Create 8 cinematic horror visuals for a 35-second YouTube Shorts video.\n\n"
-            "Scenario: " + scenario + "\n\n"
-            "RULES:\n"
-            "- Featured creature: " + creature + "\n"
-            "- Creature HIDDEN for first 20 seconds — only shadows, glimpses, wrong shapes\n"
-            "- Creature PARTIALLY REVEALED at second 25\n"
-            "- Creature FULLY VISIBLE at final shot — maximum terror\n"
-            "- All visuals in the SAME location, continuous journey\n"
-            "- NO dialogue, NO text, NO subtitles\n"
-            "- Desaturated cold blue-grey color palette throughout\n"
-            "- Start with establishing dread, end with maximum terror\n"
-            "- Creature must be visible but partially hidden — never fully revealed until end\n"
-            "- Wrong anatomy: too tall, too many joints, limbs bent wrong way\n"
-            "- Slow creeping camera movements only\n\n"
-            "VEO: slow cinematic push/pull/tilt, creature movement barely visible, "
-            "film grain, cold desaturated, 9:16 vertical\n"
-            "FLUX: photorealistic horror photography, something deeply wrong, "
-            "cold blue-grey, dark shadows, wrong anatomy visible\n\n"
-            "Return ONLY JSON:\n"
+            "You are a master horror director creating a 35-second YouTube Shorts video.\n\n"
+            "LOCATION: " + scenario + "\n"
+            "CREATURE (keep mostly hidden until end): " + creature + "\n\n"
+            + TENSION_ARC +
+            "\nCINEMATIC RULES:\n"
+            "- Color: Deep desaturated blue-black. Shadows dominate 80% of frame.\n"
+            "- Lighting: Single cold light source. Everything else near-black.\n"
+            "- Camera: Shots 1-4 ultra slow push. Shots 5-6 slight shake. Shots 7-8 static then cut.\n"
+            "- Sound design (describe in prompts): distant dripping, low hum, silence before reveals.\n"
+            "- Each prompt must describe EXACTLY what is in frame, where creature/wrongness is, camera angle.\n"
+            "- NO text, NO dialogue, NO subtitles ever.\n\n"
+            "VEO prompts: slow cinematic camera movement, specify direction and speed, 9:16 vertical\n"
+            "FLUX prompts: photorealistic horror photography, specify exact composition and what is wrong\n\n"
+            "Return ONLY this JSON, no markdown:\n"
             "{\n"
-            "  \"title\": \"creepy horror title under 50 chars #Shorts #horror #creepy\",\n"
+            "  \"title\": \"under 50 chars, creates dread, no clickbait #Shorts #horror #creepy\",\n"
             "  \"format\": \"HORROR\",\n"
+            "  \"hook\": \"one sentence describing the first 4 seconds that will stop the scroll\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4}\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"detailed cinematic prompt\", \"duration\": 4, \"tension\": \"HOOK\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"detailed horror photography prompt\", \"duration\": 4, \"tension\": \"MYSTERY\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"FIRST_SIGN\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"DREAD\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"ESCALATION\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"CONFRONTATION\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"PEAK_TERROR\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"AFTERMATH\"}\n"
             "  ],\n"
             "  \"description\": \"#horror #creepy #scary #nightmare #dark #shorts #viral #cursed #ghost #creature\",\n"
             "  \"tags\": [\"horror\", \"creepy\", \"scary\", \"nightmare\", \"dark\", \"shorts\", \"viral\", \"cursed\", \"ghost\", \"creature\"]\n"
-            "}\n\nNo markdown, raw JSON only."
+            "}"
         )
+
         return self._call_claude(prompt, "HORROR", scenario)
 
     def _generate_nightmare(self):
@@ -183,43 +209,42 @@ class ContentAgent:
         print("Scenario: " + scenario[:60])
         creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
+
         prompt = (
-            "Create 8 cinematic nightmare POV visuals for a 35-second YouTube Shorts video.\n\n"
-            "Nightmare scenario: " + scenario + "\n\n"
-            "RULES:\n"
-            "- The nightmare creature: " + creature + "\n"
-            "- Creature barely glimpsed in first 20 seconds — peripheral vision only\n"
-            "- Creature gets closer each shot\n"
-            "- Final shot: creature face to face with viewer POV — inescapable\n"
-            "- First person POV — viewer IS the person in the dream\n"
-            "- Everything slightly wrong, reality distorting\n"
-            "- NO dialogue, NO text, NO subtitles\n"
-            "- Dreamlike but terrifying — colors desaturated and wrong\n"
-            "- Camera movement mimics someone running, looking around, panicking\n"
-            "- Each shot feels like next moment in the same nightmare\n"
-            "- End with the most terrifying reveal\n\n"
-            "VEO: first person POV camera, shaky/running/turning movement, "
-            "dreamlike distortion, desaturated wrong colors, 9:16 vertical\n"
-            "FLUX: POV nightmare still, reality slightly melting, "
-            "something wrong in every corner, photorealistic nightmare\n\n"
-            "Return ONLY JSON:\n"
+            "You are a master horror director creating a 35-second nightmare POV YouTube Shorts video.\n\n"
+            "NIGHTMARE: " + scenario + "\n"
+            "THE THING PURSUING YOU: " + creature + "\n\n"
+            + TENSION_ARC +
+            "\nNIGHTMARE POV RULES:\n"
+            "- Viewer IS the dreamer — first person perspective throughout.\n"
+            "- Reality distorts progressively: shot 1 is 90% normal, shot 8 is pure nightmare.\n"
+            "- Color shifts: shots 1-2 near-normal desaturated, shots 5-8 wrong impossible colors.\n"
+            "- Camera: shots 1-3 slow breathing movement, shots 4-6 growing panic, shots 7-8 chaos.\n"
+            "- The creature gets closer every shot. By shot 7 it fills the frame.\n"
+            "- Each prompt describes exactly what the viewer sees through their own eyes.\n"
+            "- NO text, NO dialogue, NO subtitles ever.\n\n"
+            "VEO prompts: first person POV, specify head movement and what viewer sees, 9:16 vertical\n"
+            "FLUX prompts: POV nightmare photography, reality distortion level, exact composition\n\n"
+            "Return ONLY this JSON, no markdown:\n"
             "{\n"
-            "  \"title\": \"nightmare POV title under 50 chars #Shorts #nightmare #dream\",\n"
+            "  \"title\": \"under 50 chars, nightmare feeling, no clickbait #Shorts #nightmare #horror\",\n"
             "  \"format\": \"NIGHTMARE\",\n"
+            "  \"hook\": \"one sentence: what does the viewer see in first 4 seconds that stops the scroll\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4}\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"detailed POV prompt\", \"duration\": 4, \"tension\": \"HOOK\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"detailed nightmare POV prompt\", \"duration\": 4, \"tension\": \"MYSTERY\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"FIRST_SIGN\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"DREAD\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"ESCALATION\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"CONFRONTATION\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"PEAK_TERROR\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"AFTERMATH\"}\n"
             "  ],\n"
             "  \"description\": \"#nightmare #dream #horror #scary #pov #shorts #viral #creepy #dark #sleep\",\n"
             "  \"tags\": [\"nightmare\", \"dream\", \"horror\", \"scary\", \"pov\", \"shorts\", \"viral\", \"creepy\", \"dark\", \"sleep\"]\n"
-            "}\n\nNo markdown, raw JSON only."
+            "}"
         )
+
         return self._call_claude(prompt, "NIGHTMARE", scenario)
 
     def _generate_character(self):
@@ -227,43 +252,44 @@ class ContentAgent:
         print("Scenario: " + scenario[:60])
         creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
+
         prompt = (
-            "Create 8 cinematic horror visuals for a 35-second YouTube Shorts video.\n\n"
-            "Character scenario: " + scenario + "\n\n"
-            "RULES:\n"
-            "- The entity stalking the character: " + creature + "\n"
-            "- Entity invisible for first 20 seconds — character senses it but we dont see it\n"
-            "- Entity glimpsed at second 20-25 — partial, shadowy, wrong\n"
-            "- Entity fully revealed in final shot — character and viewer see it at same time\n"
-            "- Realistic human character visible throughout — photorealistic, not cartoon\n"
-            "- Character shows extreme fear: trembling, sweating, wide eyes, pale\n"
-            "- NO dialogue, NO text, NO subtitles\n"
-            "- Cold desaturated color palette, cinematic horror film look\n"
-            "- Mix of character close-ups and wide shots showing their environment\n"
-            "- The horror is revealed gradually — character reacts before we see what\n"
-            "- End with the most shocking reveal\n\n"
-            "VEO: photorealistic terrified human character, cinematic camera, "
-            "horror film lighting, slow push/pull, desaturated cold, 9:16 vertical\n"
-            "FLUX: photorealistic horror film still, character extreme fear expression, "
-            "cinematic composition, cold blue-grey, dramatic shadows\n\n"
-            "Return ONLY JSON:\n"
+            "You are a master horror director creating a 35-second character-driven horror YouTube Shorts video.\n\n"
+            "CHARACTER SCENARIO: " + scenario + "\n"
+            "THE ENTITY: " + creature + "\n\n"
+            + TENSION_ARC +
+            "\nCHARACTER HORROR RULES:\n"
+            "- Character is photorealistic, visible throughout. We watch their fear build.\n"
+            "- Shot 1: Character in normal state, but something behind them is wrong.\n"
+            "- Shots 2-4: Character notices. Face transitions from confusion to fear to terror.\n"
+            "- Shots 5-6: Character and entity in same frame. Character cannot escape.\n"
+            "- Shot 7: Character's face at maximum terror as entity fully reveals.\n"
+            "- Shot 8: Character gone. Only entity remains. Or vice versa.\n"
+            "- Character fear must be readable: trembling hands, wide eyes, pale skin, frozen.\n"
+            "- Color: cold blue-grey desaturated throughout. Entity darker than everything.\n"
+            "- NO text, NO dialogue, NO subtitles ever.\n\n"
+            "VEO prompts: cinematic camera, specify character position and entity position, 9:16 vertical\n"
+            "FLUX prompts: horror film still, specify character emotion and where entity is in frame\n\n"
+            "Return ONLY this JSON, no markdown:\n"
             "{\n"
-            "  \"title\": \"character horror title under 50 chars #Shorts #horror #scary\",\n"
+            "  \"title\": \"under 50 chars, character horror feeling #Shorts #horror #scary\",\n"
             "  \"format\": \"CHARACTER\",\n"
+            "  \"hook\": \"one sentence: what detail in first 4 seconds makes viewer unable to scroll away\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4}\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"detailed character + environment prompt\", \"duration\": 4, \"tension\": \"HOOK\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"detailed horror film still prompt\", \"duration\": 4, \"tension\": \"MYSTERY\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"FIRST_SIGN\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"DREAD\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"ESCALATION\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"CONFRONTATION\"},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 5, \"tension\": \"PEAK_TERROR\"},\n"
+            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 4, \"tension\": \"AFTERMATH\"}\n"
             "  ],\n"
             "  \"description\": \"#horror #scary #creepy #dark #shorts #viral #nightmare #ghost #cursed #fear\",\n"
             "  \"tags\": [\"horror\", \"scary\", \"creepy\", \"dark\", \"shorts\", \"viral\", \"nightmare\", \"ghost\", \"cursed\", \"fear\"]\n"
-            "}\n\nNo markdown, raw JSON only."
+            "}"
         )
+
         return self._call_claude(prompt, "CHARACTER", scenario)
 
     def _call_claude(self, prompt, fmt, scenario):
@@ -291,14 +317,14 @@ class ContentAgent:
                 "title": "Something Is Out There #Shorts #horror #creepy",
                 "format": fmt,
                 "visuals": [
-                    {"type": "VEO", "prompt": "slow cinematic establishing horror shot, dark desaturated, cold blue-grey, 9:16 vertical", "duration": 4},
-                    {"type": "FLUX", "prompt": "photorealistic horror still, something wrong, cold desaturated, dark shadows", "duration": 4},
-                    {"type": "VEO", "prompt": "slow push forward into darkness, horror, desaturated cold, 9:16 vertical", "duration": 5},
-                    {"type": "FLUX", "prompt": "disturbing detail, photorealistic horror, cold blue-grey", "duration": 4},
-                    {"type": "VEO", "prompt": "tension peaks, something moves, slow zoom, horror, 9:16 vertical", "duration": 5},
-                    {"type": "FLUX", "prompt": "maximum unease, horror photography, dark cold", "duration": 4},
-                    {"type": "VEO", "prompt": "reveal begins, horror escalates, cinematic, 9:16 vertical", "duration": 5},
-                    {"type": "FLUX", "prompt": "final haunting image, something watching, dark horror", "duration": 4}
+                    {"type": "VEO", "prompt": "slow cinematic establishing horror shot, dark desaturated, cold blue-grey, 9:16 vertical", "duration": 4, "tension": "HOOK"},
+                    {"type": "FLUX", "prompt": "photorealistic horror still, something wrong in the shadows, cold desaturated", "duration": 4, "tension": "MYSTERY"},
+                    {"type": "VEO", "prompt": "slow push forward into darkness, shadow moves wrong, horror, 9:16 vertical", "duration": 5, "tension": "FIRST_SIGN"},
+                    {"type": "FLUX", "prompt": "disturbing silhouette barely visible, photorealistic horror, cold blue-grey", "duration": 4, "tension": "DREAD"},
+                    {"type": "VEO", "prompt": "tension peaks, creature movement, slight camera shake, horror, 9:16 vertical", "duration": 5, "tension": "ESCALATION"},
+                    {"type": "FLUX", "prompt": "creature partially revealed, maximum unease, horror photography", "duration": 4, "tension": "CONFRONTATION"},
+                    {"type": "VEO", "prompt": "full reveal, maximum horror, creature fills frame, 9:16 vertical", "duration": 5, "tension": "PEAK_TERROR"},
+                    {"type": "FLUX", "prompt": "aftermath, silence, something wrong remains, dark horror", "duration": 4, "tension": "AFTERMATH"}
                 ],
                 "description": "#horror #creepy #scary #nightmare #dark #shorts #viral #cursed #ghost #creature",
                 "tags": ["horror", "creepy", "scary", "nightmare", "dark", "shorts", "viral", "cursed", "ghost", "creature"]
