@@ -56,6 +56,7 @@ CHARACTER_SCENARIOS = [
     "woman in shower hears the bathroom door slowly open, then silence",
     "detective investigating disappearances finds a mirror that shows who was last in the room",
 ]
+
 CREATURES = [
     "impossibly tall figure with elongated limbs bent the wrong way, no face, just smooth skin",
     "creature made entirely of shadow that absorbs light around it, dozens of eyes",
@@ -136,7 +137,7 @@ class ContentAgent:
     def _generate_horror(self):
         scenario = self._get_unused_scenario(HORROR_LOCATIONS, "horror")
         print("Scenario: " + scenario[:60])
-creature = random.choice(CREATURES)
+        creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
         prompt = (
             "Create 8 cinematic horror visuals for a 35-second YouTube Shorts video.\n\n"
@@ -181,7 +182,7 @@ creature = random.choice(CREATURES)
     def _generate_nightmare(self):
         scenario = self._get_unused_scenario(NIGHTMARE_SCENARIOS, "nightmare")
         print("Scenario: " + scenario[:60])
-creature = random.choice(CREATURES)
+        creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
         prompt = (
             "Create 8 cinematic nightmare POV visuals for a 35-second YouTube Shorts video.\n\n"
@@ -226,7 +227,7 @@ creature = random.choice(CREATURES)
     def _generate_character(self):
         scenario = self._get_unused_scenario(CHARACTER_SCENARIOS, "character")
         print("Scenario: " + scenario[:60])
-creature = random.choice(CREATURES)
+        creature = random.choice(CREATURES)
         print("Creature: " + creature[:60])
         prompt = (
             "Create 8 cinematic horror visuals for a 35-second YouTube Shorts video.\n\n"
