@@ -176,7 +176,6 @@ class ContentAgent:
             "  \"tags\": [\"horror\", \"creepy\", \"scary\", \"nightmare\", \"dark\", \"shorts\", \"viral\", \"cursed\", \"ghost\", \"creature\"]\n"
             "}\n\nNo markdown, raw JSON only."
         )
-
         return self._call_claude(prompt, "HORROR", scenario)
 
     def _generate_nightmare(self):
@@ -221,7 +220,6 @@ class ContentAgent:
             "  \"tags\": [\"nightmare\", \"dream\", \"horror\", \"scary\", \"pov\", \"shorts\", \"viral\", \"creepy\", \"dark\", \"sleep\"]\n"
             "}\n\nNo markdown, raw JSON only."
         )
-
         return self._call_claude(prompt, "NIGHTMARE", scenario)
 
     def _generate_character(self):
@@ -266,7 +264,6 @@ class ContentAgent:
             "  \"tags\": [\"horror\", \"scary\", \"creepy\", \"dark\", \"shorts\", \"viral\", \"nightmare\", \"ghost\", \"cursed\", \"fear\"]\n"
             "}\n\nNo markdown, raw JSON only."
         )
-
         return self._call_claude(prompt, "CHARACTER", scenario)
 
     def _call_claude(self, prompt, fmt, scenario):
