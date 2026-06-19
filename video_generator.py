@@ -3,6 +3,7 @@ import requests
 import fal_client
 from PIL import Image
 from io import BytesIO
+import random
 
 
 class VideoGenerator:
@@ -85,24 +86,58 @@ class VideoGenerator:
                 img = img.resize((1080, 1920), Image.LANCZOS)
                 img_path = save_path.replace(".mp4", ".jpg")
                 img.save(img_path, "JPEG", quality=95)
-                success = self._image_to_video(img_path, save_path, duration)
+                success = self._image_to_video_kenburns(img_path, save_path, duration)
                 print("  FLUX image ready")
                 return success
         except Exception as e:
             print("  FLUX error: " + str(e))
         return False
 
-    def _image_to_video(self, image_path, video_path, duration=3):
+    def _image_to_video_kenburns(self, image_path, video_path, duration=3):
+        """FLUX resimlerine Ken Burns efekti ekler - yavaş zoom ve pan hareketi"""
         try:
+            # Farklı Ken Burns hareketleri - her seferinde random seç
+            movements = [
+                # Yavaş zoom in - ortadan
+                "zoompan=z='min(zoom+0.0015,1.3)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={fps}*{dur}:s=1080x1920:fps={fps}",
+                # Yavaş zoom out
+                "zoompan=z='if(lte(zoom,1.0),1.3,max(1.0,zoom-0.0015))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={fps}*{dur}:s=1080x1920:fps={fps}",
+                # Yavaş pan soldan sağa + hafif zoom
+                "zoompan=z='min(zoom+0.001,1.2)':x='if(lte(zoom,1.0),0,iw/2-(iw/zoom/2))+on/({fps}*{dur})*100':y='ih/2-(ih/zoom/2)':d={fps}*{dur}:s=1080x1920:fps={fps}",
+                # Yavaş pan yukarıdan aşağı + zoom
+                "zoompan=z='min(zoom+0.001,1.2)':x='iw/2-(iw/zoom/2)':y='if(lte(zoom,1.0),0,ih/2-(ih/zoom/2))+on/({fps}*{dur})*80':d={fps}*{dur}:s=1080x1920:fps={fps}",
+                # Sağ alt köşeden zoom in
+                "zoompan=z='min(zoom+0.0015,1.25)':x='iw-(iw/zoom)':y='ih-(ih/zoom)':d={fps}*{dur}:s=1080x1920:fps={fps}",
+                # Sol üst köşeden zoom in
+                "zoompan=z='min(zoom+0.0015,1.25)':x='0':y='0':d={fps}*{dur}:s=1080x1920:fps={fps}",
+            ]
+
+            fps = 24
+            movement = random.choice(movements)
+            vf = movement.format(fps=fps, dur=duration)
+
             cmd = (
                 "ffmpeg -y -loop 1 -i " + image_path +
+                " -vf \"" + vf + "\" " +
                 " -c:v libx264 -t " + str(duration) +
-                " -vf scale=1080:1920 -pix_fmt yuv420p " + video_path
+                " -pix_fmt yuv420p -an " + video_path
             )
             result = os.system(cmd)
-            return result == 0 and os.path.exists(video_path)
+            if result == 0 and os.path.exists(video_path):
+                return True
+
+            # Fallback: basit statik video
+            print("  Ken Burns failed, using static fallback")
+            cmd_fallback = (
+                "ffmpeg -y -loop 1 -i " + image_path +
+                " -c:v libx264 -t " + str(duration) +
+                " -vf scale=1080:1920 -pix_fmt yuv420p -an " + video_path
+            )
+            result2 = os.system(cmd_fallback)
+            return result2 == 0 and os.path.exists(video_path)
+
         except Exception as e:
-            print("  Image to video error: " + str(e))
+            print("  Ken Burns error: " + str(e))
         return False
 
     def _trim_clip(self, video_path, duration):
@@ -131,18 +166,27 @@ class VideoGenerator:
                 norm_path = os.path.join(self.output_dir, "norm_" + str(i) + ".mp4")
                 cmd = (
                     "ffmpeg -y -i " + clip +
-                    " -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2\" " +
-                    "-c:v libx264 -an " + norm_path
+                    " -vf \"scale=1080:1920:force_original_aspect_ratio=decrease,"
+                    "pad=1080:1920:(ow-iw)/2:(oh-ih)/2\" "
+                    "-c:v libx264 -r 24 -an " + norm_path
                 )
                 os.system(cmd)
                 if os.path.exists(norm_path):
                     normalized.append(norm_path)
+
             if not normalized:
                 return None
+
             with open(concat_file, "w") as f:
                 for clip in normalized:
                     f.write("file '" + os.path.abspath(clip) + "'\n")
-            os.system("ffmpeg -y -f concat -safe 0 -i " + concat_file + " -c copy " + video_path)
+
+            # Tüm klipleri aynı frame rate ile birleştir
+            os.system(
+                "ffmpeg -y -f concat -safe 0 -i " + concat_file +
+                " -c:v libx264 -r 24 -pix_fmt yuv420p " + video_path
+            )
+
             if os.path.exists(video_path):
                 print("Video merged: " + str(len(normalized)) + " clips")
                 return video_path
