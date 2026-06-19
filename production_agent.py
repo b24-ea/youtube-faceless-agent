@@ -14,10 +14,6 @@ class ProductionAgent:
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
             
-            def get_background_music(self):
-        try:
-            music_path = os.path.join(self.output_dir, "music.mp3")
-            
             creepy_music_urls = [
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Fog.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lightless%20Dawn.mp3",
@@ -51,7 +47,6 @@ class ProductionAgent:
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Nowhere%20Land.mp3",
             ]
             
-            used_music_file = os.path.join(self.output_dir, "used_music.json")
             try:
                 with open("used_music.json", "r") as f:
                     used_music = json.load(f)
@@ -82,27 +77,6 @@ class ProductionAgent:
                         print("Music failed: " + str(r.status_code))
                 except Exception as ex:
                     print("Music error: " + str(ex))
-                    continue
-        except Exception as e:
-            print("Music error: " + str(e))
-        return None
-            
-            random.shuffle(horror_music_urls)
-            
-            for url in horror_music_urls:
-                try:
-                    r = requests.get(url, timeout=30, headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                    })
-                    if r.status_code == 200 and len(r.content) > 10000:
-                        with open(music_path, "wb") as f:
-                            f.write(r.content)
-                        print("Background music downloaded: " + url.split("/")[-1])
-                        return music_path
-                    else:
-                        print("Music URL failed: " + str(r.status_code))
-                except Exception as ex:
-                    print("Music URL error: " + str(ex))
                     continue
         except Exception as e:
             print("Music error: " + str(e))
