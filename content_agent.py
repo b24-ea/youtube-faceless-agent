@@ -162,27 +162,35 @@ class ContentAgent:
             "clearly different from all of these (different trigger, different relationship context, "
             "different angle):\n"
             + recent_text + "\n\n"
-            "SCRIPT RULES:\n"
-            "- Total spoken length: 25-35 seconds when read aloud at normal pace (roughly 65-90 words).\n"
-            "- HOOK (first sentence): State the situation directly and create immediate relatability. "
-            "Something that makes the viewer think 'this is literally me'.\n"
-            "- BODY: Explain the psychological tactic in 3-4 short, punchy sentences. Practical, "
-            "specific, actionable. Not generic self-help fluff — sound like an expert revealing "
-            "an insider secret.\n"
-            "- CLOSING LINE: A short, memorable, slightly dark/powerful statement that summarizes "
-            "the mindset shift. Should feel quotable.\n"
+            "SCRIPT RULES — STRICT 4-PART STRUCTURE, TOTAL 15-25 SECONDS (roughly 40-55 words):\n"
+            "1. HOOK (0-4s, 1 short sentence): State the exact situation bluntly. Must instantly make "
+            "the viewer think 'this is literally happening to me right now'. No setup, no warmup — "
+            "drop straight into it.\n"
+            "2. CURIOSITY GAP (4-7s, 1 short sentence): Say that most people respond the wrong way and "
+            "it backfires, WITHOUT yet revealing the correct response. Creates a 'wait, what should I "
+            "do then?' itch that keeps them watching.\n"
+            "3. SOLUTION (7-18s, 2-3 punchy sentences): Deliver the actual tactic clearly and "
+            "specifically. Concrete and actionable, not vague self-help fluff — sound like an expert "
+            "revealing an insider secret.\n"
+            "4. CLOSING LINE (18-22s, 1 short sentence): A sharp, memorable, slightly dark/powerful "
+            "statement that locks in the mindset shift. Should feel quotable, like a line people would "
+            "screenshot.\n\n"
             "- Tone: calm, controlled, slightly dark and serious — like someone who has mastered "
             "emotional control speaking with quiet authority. NOT motivational-speaker energy. "
             "NOT cheerful. Think: a strategist, not a cheerleader.\n"
             "- Use 'you' directly. Short sentences. No filler words. No emojis in the script text.\n"
+            "- Every single word must earn its place — this is a tight 15-25 second script, there is "
+            "no room for warmup, repetition, or padding.\n"
             "- Do NOT use the words 'manipulate' or 'manipulation' — keep it framed as self-respect "
             "and emotional intelligence, not as scheming against others.\n\n"
             "VISUAL RULES:\n"
             "- This video uses dark, moody, cinematic atmosphere visuals (NOT literal illustrations "
             "of the advice — abstract mood pieces: empty rooms, rain, shadows, silhouettes, cold "
             "light). No people's faces shown clearly. No text in the visuals themselves.\n"
-            "- Generate 4 visuals total. They will play under the voiceover, looping/cross-fading "
-            "as needed to fill the audio duration.\n"
+            "- Generate exactly 3 visuals total, matching the pacing: visual 1 covers HOOK + CURIOSITY "
+            "GAP (tense, still, unsettling), visual 2 covers SOLUTION (slightly more movement, things "
+            "shifting/changing), visual 3 covers CLOSING LINE (a final striking, powerful image).\n"
+            "- They will play under the voiceover, stretching to fill the audio duration.\n"
             "- Color: cold desaturated blue-grey-black palette, cinematic, atmospheric.\n\n"
             "VEO prompts: slow cinematic camera movement, moody atmosphere, 9:16 vertical, no people's faces\n"
             "FLUX prompts: photorealistic moody photography, cinematic shadows, cold tones, 9:16 vertical\n\n"
@@ -194,9 +202,8 @@ class ContentAgent:
             "  \"tactic_name\": \"the original tactic name you invented\",\n"
             "  \"script\": \"the full voiceover script as one continuous text, ready to be read aloud\",\n"
             "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 6},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 6},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 6},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 7},\n"
+            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 8},\n"
             "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 6}\n"
             "  ],\n"
             "  \"description\": \"#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect\",\n"
@@ -236,17 +243,15 @@ class ContentAgent:
                 "tactic_name": fallback_topic["tactic_name"],
                 "script": (
                     "If " + fallback_topic["trigger"] + ", do not react with emotion. "
-                    "Respond with silence and distance instead. "
-                    "This is called " + fallback_topic["tactic_name"] + ". "
+                    "Most people respond the wrong way, and it backfires every time. "
+                    "Stay completely silent and create distance instead. "
                     "When you stop reacting, you take back control. "
-                    "People only escalate when they get a reaction. "
                     "Remove the reaction, and you remove their power."
                 ),
                 "visuals": [
-                    {"type": "VEO", "prompt": "slow cinematic shot of empty dark room, cold window light, rain on glass, 9:16 vertical, no faces", "duration": 6},
-                    {"type": "FLUX", "prompt": "photorealistic moody photography, dark hallway, single flickering light, cold blue tones, 9:16 vertical", "duration": 6},
-                    {"type": "VEO", "prompt": "slow push toward dark window, city lights blurred, cold atmosphere, 9:16 vertical, no faces", "duration": 6},
-                    {"type": "FLUX", "prompt": "photorealistic silhouette in shadow against window, cold cinematic light, 9:16 vertical", "duration": 6}
+                    {"type": "VEO", "prompt": "slow cinematic shot of empty dark room, cold window light, rain on glass, 9:16 vertical, no faces", "duration": 7},
+                    {"type": "VEO", "prompt": "slow push toward dark window, city lights blurred, cold atmosphere, something shifting, 9:16 vertical, no faces", "duration": 8},
+                    {"type": "FLUX", "prompt": "photorealistic silhouette in shadow against window, cold cinematic light, powerful final image, 9:16 vertical", "duration": 6}
                 ],
                 "description": "#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect",
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
