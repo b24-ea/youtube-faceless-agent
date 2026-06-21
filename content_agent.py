@@ -3,7 +3,8 @@ import random
 import os
 
 
-# Konu havuzu: manipülasyon / dark psychology / kötü davranışlara karşı taktikler
+# Sabit liste artik birebir kullanilmiyor - Claude'a ilham/stil ornegi olarak veriliyor.
+# Claude her seferinde bunlardan FARKLI, kendi uydurdugu ozgun bir senaryo+taktik uretiyor.
 TOPICS = [
     {
         "trigger": "someone constantly ignores your messages or leaves you on read",
@@ -112,35 +113,55 @@ class ContentAgent:
     def __init__(self, client):
         self.client = client
 
-    def _get_unused_topic(self):
-        used_file = "used_topics.json"
+    def _get_inspiration_seed(self):
+        """Sabit listeden rastgele birkac ornek secer - Claude bunlardan ilham alir, kopyalamaz"""
+        sample = random.sample(TOPICS, k=min(4, len(TOPICS)))
+        return sample
+
+    def _get_recent_scenarios(self, limit=15):
+        """Son uretilen senaryolarin ozetini getirir, boylece Claude tekrara dusmez"""
+        history_file = "scenario_history.json"
         try:
-            with open(used_file, "r") as f:
-                used = json.load(f)
+            with open(history_file, "r") as f:
+                history = json.load(f)
         except Exception:
-            used = []
+            history = []
+        return history[-limit:]
 
-        available = [t for t in TOPICS if t["tactic_name"] not in used]
-        if not available:
-            used = []
-            available = TOPICS
+    def _save_scenario_to_history(self, scenario_summary):
+        history_file = "scenario_history.json"
+        try:
+            with open(history_file, "r") as f:
+                history = json.load(f)
+        except Exception:
+            history = []
 
-        chosen = random.choice(available)
-        used.append(chosen["tactic_name"])
-        with open(used_file, "w") as f:
-            json.dump(used, f)
-        return chosen
+        history.append(scenario_summary)
+        history = history[-50:]
+        with open(history_file, "w") as f:
+            json.dump(history, f)
 
     def generate_video(self, niche=None, analytics_data=None, used_concepts=None):
-        topic = self._get_unused_topic()
-        print("Topic: " + topic["tactic_name"] + " - " + topic["trigger"][:50])
+        inspiration = self._get_inspiration_seed()
+        recent = self._get_recent_scenarios()
+
+        inspiration_text = "\n".join(
+            "- " + t["trigger"] + " (style example: " + t["tactic_name"] + ")" for t in inspiration
+        )
+        recent_text = "\n".join("- " + r for r in recent) if recent else "(none yet, this is the first video)"
 
         prompt = (
             "You are writing a voiceover script for a YouTube Shorts video about psychology and "
             "self-respect tactics. The video teaches people how to respond with confidence when "
             "someone treats them badly.\n\n"
-            "SITUATION: " + topic["trigger"] + "\n"
-            "TACTIC NAME: " + topic["tactic_name"] + "\n\n"
+            "STEP 1 — Invent a fresh, specific situation and a named tactic for it.\n"
+            "Use these only as loose inspiration for tone and style. Do NOT copy them word for word — "
+            "invent your own specific situation and your own original tactic name:\n"
+            + inspiration_text + "\n\n"
+            "These situations were already used in recent videos — your new situation must be "
+            "clearly different from all of these (different trigger, different relationship context, "
+            "different angle):\n"
+            + recent_text + "\n\n"
             "SCRIPT RULES:\n"
             "- Total spoken length: 25-35 seconds when read aloud at normal pace (roughly 65-90 words).\n"
             "- HOOK (first sentence): State the situation directly and create immediate relatability. "
@@ -169,6 +190,8 @@ class ContentAgent:
             "{\n"
             "  \"title\": \"under 50 chars, intriguing, no clickbait spam #Shorts\",\n"
             "  \"format\": \"PSYCHOLOGY\",\n"
+            "  \"situation_summary\": \"one short sentence summarizing the invented situation, for internal tracking only\",\n"
+            "  \"tactic_name\": \"the original tactic name you invented\",\n"
             "  \"script\": \"the full voiceover script as one continuous text, ready to be read aloud\",\n"
             "  \"visuals\": [\n"
             "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 6},\n"
@@ -181,9 +204,9 @@ class ContentAgent:
             "}"
         )
 
-        return self._call_claude(prompt, topic)
+        return self._call_claude(prompt)
 
-    def _call_claude(self, prompt, topic):
+    def _call_claude(self, prompt):
         response = self.client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2000,
@@ -201,16 +224,20 @@ class ContentAgent:
                     content = part.strip()
                     break
 
+        fallback_topic = random.choice(TOPICS)
+
         try:
             video_data = json.loads(content)
         except Exception:
             video_data = {
-                "title": topic["tactic_name"] + " #Shorts",
+                "title": fallback_topic["tactic_name"] + " #Shorts",
                 "format": "PSYCHOLOGY",
+                "situation_summary": fallback_topic["trigger"],
+                "tactic_name": fallback_topic["tactic_name"],
                 "script": (
-                    "If " + topic["trigger"] + ", do not react with emotion. "
+                    "If " + fallback_topic["trigger"] + ", do not react with emotion. "
                     "Respond with silence and distance instead. "
-                    "This is called " + topic["tactic_name"] + ". "
+                    "This is called " + fallback_topic["tactic_name"] + ". "
                     "When you stop reacting, you take back control. "
                     "People only escalate when they get a reaction. "
                     "Remove the reaction, and you remove their power."
@@ -226,7 +253,12 @@ class ContentAgent:
             }
 
         video_data["niche"] = "psychology"
-        video_data["scenario"] = topic["tactic_name"]
+        scenario_label = video_data.get("tactic_name") or video_data.get("title") or "unknown"
+        video_data["scenario"] = scenario_label
+
+        summary_for_history = video_data.get("situation_summary", "") + " (" + scenario_label + ")"
+        self._save_scenario_to_history(summary_for_history)
+
         return video_data
 
     def _get_performance_insight(self, analytics_data):
