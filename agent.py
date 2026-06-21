@@ -10,8 +10,8 @@ from analytics_agent import AnalyticsAgent
 
 
 # Video suresi bu aralikta tutulur (saniye)
-MIN_DURATION = 30
-MAX_DURATION = 45
+MIN_DURATION = 15
+MAX_DURATION = 25
 
 
 def main():
