@@ -89,7 +89,7 @@ class ProductionAgent:
             cmd = (
                 "ffmpeg -y -i " + video_path + " "
                 "-stream_loop -1 -i " + music_path + " "
-                "-filter_complex \"[1:a]volume=0.12[bg];[0:a]volume=1.0[orig];[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
+                "-filter_complex \"[1:a]volume=0.25[bg];[0:a]volume=1.0[orig];[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
                 "-map 0:v -map \"[out]\" "
                 "-c:v copy -c:a aac -shortest " + output_path
             )
@@ -101,7 +101,7 @@ class ProductionAgent:
             cmd2 = (
                 "ffmpeg -y -i " + video_path + " "
                 "-stream_loop -1 -i " + music_path + " "
-                "-filter_complex \"[1:a]volume=0.12[bg]\" "
+                "-filter_complex \"[1:a]volume=0.25[bg]\" "
                 "-map 0:v -map \"[bg]\" "
                 "-c:v copy -c:a aac -shortest " + output_path
             )
