@@ -163,20 +163,25 @@ class ContentAgent:
     def __init__(self, client):
         self.client = client
 
-    def _get_horror_visuals(self, count=3):
-        """Script'ten bagimsiz, eski korku formatindaki gibi yaratik/karanlik sahne prompt'lari uretir"""
-        visuals = []
-        durations = [7, 8, 6][:count]
+    def get_horror_visuals(self, target_duration, max_visual_duration=4):
+        """
+        target_duration: toplam video suresi (saniye). Buna gore kac gorsele
+        ihtiyac oldugu hesaplanir (her gorsel max_visual_duration kadar surer).
+        Script'ten bagimsiz, cesitli korku unsurlari (yaratik/hayalet/siradisi/lokasyon)
+        havuzundan rastgele secilir.
+        """
+        count = max(2, round(target_duration / max_visual_duration))
 
+        visuals = []
         for i in range(count):
-            use_creature = random.random() < 0.6  # cogu zaman yaratik gorunsun
+            use_creature = random.random() < 0.6  # cogu zaman yaratik/hayalet gorunsun
             if use_creature:
-                creature = random.choice(HORROR_CREATURES)
-                base = creature
+                base = random.choice(HORROR_CREATURES)
             else:
                 base = random.choice(HORROR_LOCATIONS)
 
             visual_type = "VEO" if i % 2 == 0 else "FLUX"
+            duration = max_visual_duration
 
             if visual_type == "VEO":
                 prompt = (
@@ -191,7 +196,7 @@ class ContentAgent:
                     "9:16 vertical, cinematic horror film still."
                 )
 
-            visuals.append({"type": visual_type, "prompt": prompt, "duration": durations[i]})
+            visuals.append({"type": visual_type, "prompt": prompt, "duration": duration})
 
         return visuals
 
@@ -318,9 +323,9 @@ class ContentAgent:
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
             }
 
-        # Gorseller script'ten bagimsiz - eski korku formatindaki gibi
-        # yaratik/karanlik orman havuzundan rastgele secilir
-        video_data["visuals"] = self._get_horror_visuals(count=3)
+        # NOT: Gorseller burada uretilmiyor artik. agent.py icinde ses suresi
+        # (target_duration) belli olduktan sonra content_agent.get_horror_visuals(target_duration)
+        # cagrilarak gorsel sayisi otomatik hesaplanir (her gorsel max 4sn).
 
         video_data["niche"] = "psychology"
         scenario_label = video_data.get("tactic_name") or video_data.get("title") or "unknown"
