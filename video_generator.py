@@ -205,16 +205,19 @@ class VideoGenerator:
             print("Duration pad error: " + str(e))
         return video_path
 
-    def add_voiceover_and_captions(self, video_path, audio_path, word_timings, output_path=None):
+    def add_voiceover_and_captions(self, video_path, audio_path, word_timings, output_path=None, total_duration=None):
         """
-        Videoya ses ekler ve kelime kelime senkronize altyazı yakar (TikTok tarzı).
+        Videoya ses ekler, kelime kelime senkronize altyazı ve sabit kanal adı yakar.
         """
         try:
             if output_path is None:
                 output_path = os.path.join(self.output_dir, "video_with_voice.mp4")
 
+            if total_duration is None and word_timings:
+                total_duration = word_timings[-1]["end"] + 0.5
+
             ass_path = os.path.join(self.output_dir, "captions.ass")
-            self._write_ass_captions(word_timings, ass_path)
+            self._write_ass_captions(word_timings, ass_path, total_duration)
 
             ass_escaped = ass_path.replace(":", "\\:").replace("\\", "/")
 
@@ -243,8 +246,8 @@ class VideoGenerator:
             print("Voiceover/caption error: " + str(e))
         return video_path
 
-    def _write_ass_captions(self, word_timings, ass_path):
-        """Kelime kelime yığılan TikTok tarzı altyazı dosyası (.ass) üretir"""
+    def _write_ass_captions(self, word_timings, ass_path, total_duration=None):
+        """Kelime kelime yığılan TikTok tarzı neon sarı glow altyazı (.ass) üretir"""
         header = (
             "[Script Info]\n"
             "ScriptType: v4.00+\n"
@@ -255,20 +258,25 @@ class VideoGenerator:
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
             "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, "
             "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            "Style: Default,Arial Black,90,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,"
-            "1,6,0,2,60,60,400,1\n"
+            # Kelime kelime altyazi: kuculmus boyut (62px), beyaz govde + neon sari glow + siyah kontur
+            "Style: Caption,Arial Black,62,&H00FFFFFF,&H000000FF,&H0000E6FF,&H00000000,1,0,0,0,100,100,0,0,"
+            "1,4,0,2,60,60,400,1\n"
             "\n"
             "[Events]\n"
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
         )
 
         events = []
+
+        # Kelime kelime altyazi - neon sari glow icin {\blur} tag'i kullanilir
+        # OutlineColour &H0000E6FF = neon sari (BGR formatinda), blur ile glow efekti verilir
         for w in word_timings:
             start = self._format_ass_time(w["start"])
             end = self._format_ass_time(w["end"])
             word_text = w["word"].upper().replace("\n", " ")
             events.append(
-                "Dialogue: 0," + start + "," + end + ",Default,,0,0,0,,{\\fad(50,50)}" + word_text
+                "Dialogue: 0," + start + "," + end + ",Caption,,0,0,0,,"
+                "{\\fad(50,50)\\blur3}" + word_text
             )
 
         with open(ass_path, "w", encoding="utf-8") as f:
