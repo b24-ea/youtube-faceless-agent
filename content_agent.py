@@ -88,30 +88,112 @@ TOPICS = [
     },
 ]
 
-# Görsel sahneler — korku atmosferi korunuyor ama artık yaratık yok
-# gerilim / gizem / güç hissi veren sahneler
-ATMOSPHERE_SCENES = [
-    "empty dark room lit by a single cold window light, rain on glass",
-    "dark hallway with one flickering light at the far end",
-    "person standing alone in fog, back turned to camera, city lights distant",
-    "close up of hands resting calmly on a dark wooden table, single candle",
-    "empty night street, wet asphalt reflecting cold blue light",
-    "person sitting in shadow, only silhouette visible against window",
-    "dark mirror reflecting a dim room, nobody visible in reflection",
-    "abandoned building interior, moonlight through broken windows",
-    "rain falling on dark glass, blurred city lights behind",
-    "empty chair in a dark room, single light from above",
-    "person walking slowly away down a long dark corridor",
-    "close up of a phone screen glowing in a dark room, notification fading",
-    "dark forest path at dusk, cold mist between the trees",
-    "quiet rooftop at night, city skyline in cold blue tones",
-    "old clock ticking in a dim empty room, shadows stretching",
+
+# Görseller artik script konusuyla eslesmiyor - eski korku formatindaki gibi
+# bagimsiz, COK CESITLI korku unsurlari kullaniliyor: yaratiklar, hayaletler,
+# garip varliklar, aciklanamayan fenomenler, surreal korku goruntuleri
+HORROR_CREATURES = [
+    "impossibly tall figure with elongated limbs bent the wrong way, no face, just smooth skin, standing in darkness",
+    "creature made entirely of shadow that absorbs light around it, dozens of eyes, lurking in a dark forest",
+    "humanoid with too many joints, moves like a broken marionette, jaw unhinged, crawling in an abandoned building",
+    "pale woman with black void eyes, hair covering face, crawling on a ceiling in a dark hallway",
+    "massive spider-like entity with a human torso where the head should be, deep in a dark forest",
+    "figure with hands where its feet should be, walking on all fours backwards through fog",
+    "translucent entity, internal organs visible and still moving, no skin, standing motionless in shadow",
+    "creature with a mouth that opens vertically across its entire face, emerging from darkness",
+    "tall hooded figure with fingers 3 feet long that drag on the ground, walking through a dark forest road",
+    "creature with a second face on the back of its head, both screaming silently, in an abandoned asylum",
+    "mass of black tendrils forming a vaguely human shape, constantly shifting, in a flooded basement",
+    "entity with no lower body, just a torso dragging itself with broken arms, in a dark tunnel",
+    "pale humanoid with no eyes or mouth, just smooth featureless skin, tilting head, standing in fog",
+    "figure with limbs that extend impossibly, reaching across a dark room from a doorway",
+    "massive horned creature with glowing eyes, standing motionless deep in a dense dark forest",
+    # Hayaletler
+    "translucent ghostly woman in a tattered white dress, floating slightly above the ground, glowing faintly in the dark",
+    "semi-transparent spectral figure standing perfectly still in an old abandoned bedroom, cold blue glow",
+    "ghostly child silhouette flickering in and out of visibility at the end of a dark hallway",
+    "apparition of a man made of mist and static, walking through a wall, barely visible",
+    "pale glowing spirit hovering near the ceiling of an empty attic, distorted and flickering like old film",
+    "ghostly figure reflected in an antique mirror, not present in the room itself, reaching through the glass",
+    "spectral hands emerging from a wall, faint and translucent, fingers grasping at the air",
+    # Garip / siradisi varliklar ve fenomenler
+    "impossible geometric shape hovering in the air, edges that hurt to look at, glitching reality around it",
+    "swarm of black moths forming a humanoid silhouette in a dark room, slowly dispersing and reforming",
+    "old television static forming a face that turns to look directly at camera, in a dark living room",
+    "deer with too many legs and a human eye standing motionless at the edge of a dark forest",
+    "floating mass of eyes blinking in unison, suspended in the darkness of an empty room",
+    "shadow on the wall that moves independently of any person casting it, in a dimly lit corridor",
+    "doll-like figure with cracked porcelain skin sitting upright in a dark abandoned nursery, head slowly turning",
+    "a second moon visible through a window, wrong color, pulsing faintly, something watching from below it",
+    "water rising from cracks in the floor forming a humanoid shape, dripping black liquid, in a dark basement",
+    "old photograph on a wall where the person's face slowly changes when not directly observed",
+]
+
+HORROR_LOCATIONS = [
+    "dark forest road at night with a single streetlight, dense fog rolling between the trees",
+    "abandoned asylum corridor at 3am, flickering lights, something crawling on the ceiling far away",
+    "dense dark forest at night, moonlight barely breaking through the thick canopy",
+    "abandoned Soviet bunker, dripping water, dim emergency lighting, long dark corridors",
+    "empty subway tunnel, distant flickering lights, deep darkness ahead",
+    "flooded basement, pale moonlight from a broken window, black standing water",
+    "dark mountain road at night, headlights cutting through heavy fog",
+    "abandoned carnival at night, broken rides silhouetted against a stormy sky",
+    "empty church with rows of pews, candles flickering, deep shadows in the rafters",
+    "dense dark forest, fog low to the ground, twisted bare trees",
+    "old Victorian mansion hallway at night, long shadows, a single dim chandelier",
+    "abandoned hospital room, flickering fluorescent light, peeling walls",
+    "dark lake at midnight, mist rising off the still black water",
+    "empty school hallway at 4am, lockers lining the walls, one light flickering",
+    "nuclear plant ruins at night, broken machinery, eerie green emergency glow",
+    # Daha siradisi / sureal mekanlar
+    "abandoned funhouse hall of mirrors, distorted reflections multiplying into infinity, dim red light",
+    "endless empty parking garage at night, flickering fluorescent lights stretching into darkness",
+    "old attic filled with covered furniture under white sheets, single shaft of moonlight",
+    "abandoned amusement park ferris wheel at night, slowly turning with no operator, fog at its base",
+    "empty elevator with mismatched floor numbers, doors opening to total darkness",
+    "decrepit greenhouse at night, dead plants reaching upward, broken glass panels letting in moonlight",
+    "long abandoned motel hallway, all doors slightly ajar, flickering neon sign visible through a window",
+    "underground tunnel system with strange symbols carved into the walls, single dim work light",
+    "abandoned lighthouse interior at night, spiral staircase disappearing into darkness above",
+    "old cemetery at midnight, fog pooling between leaning gravestones, a single open grave",
 ]
 
 
 class ContentAgent:
     def __init__(self, client):
         self.client = client
+
+    def _get_horror_visuals(self, count=3):
+        """Script'ten bagimsiz, eski korku formatindaki gibi yaratik/karanlik sahne prompt'lari uretir"""
+        visuals = []
+        durations = [7, 8, 6][:count]
+
+        for i in range(count):
+            use_creature = random.random() < 0.6  # cogu zaman yaratik gorunsun
+            if use_creature:
+                creature = random.choice(HORROR_CREATURES)
+                base = creature
+            else:
+                base = random.choice(HORROR_LOCATIONS)
+
+            visual_type = "VEO" if i % 2 == 0 else "FLUX"
+
+            if visual_type == "VEO":
+                prompt = (
+                    base + ". Cinematic horror, slow creeping camera movement, "
+                    "cold desaturated blue-grey color palette, dark shadows, film grain, "
+                    "9:16 vertical, no text, ominous atmosphere."
+                )
+            else:
+                prompt = (
+                    base + ". Photorealistic horror photography, dramatic lighting, "
+                    "cold desaturated blue-grey tones, deep shadows, unsettling detail, "
+                    "9:16 vertical, cinematic horror film still."
+                )
+
+            visuals.append({"type": visual_type, "prompt": prompt, "duration": durations[i]})
+
+        return visuals
 
     def _get_inspiration_seed(self):
         """Sabit listeden rastgele birkac ornek secer - Claude bunlardan ilham alir, kopyalamaz"""
@@ -183,17 +265,6 @@ class ContentAgent:
             "no room for warmup, repetition, or padding.\n"
             "- Do NOT use the words 'manipulate' or 'manipulation' — keep it framed as self-respect "
             "and emotional intelligence, not as scheming against others.\n\n"
-            "VISUAL RULES:\n"
-            "- This video uses dark, moody, cinematic atmosphere visuals (NOT literal illustrations "
-            "of the advice — abstract mood pieces: empty rooms, rain, shadows, silhouettes, cold "
-            "light). No people's faces shown clearly. No text in the visuals themselves.\n"
-            "- Generate exactly 3 visuals total, matching the pacing: visual 1 covers HOOK + CURIOSITY "
-            "GAP (tense, still, unsettling), visual 2 covers SOLUTION (slightly more movement, things "
-            "shifting/changing), visual 3 covers CLOSING LINE (a final striking, powerful image).\n"
-            "- They will play under the voiceover, stretching to fill the audio duration.\n"
-            "- Color: cold desaturated blue-grey-black palette, cinematic, atmospheric.\n\n"
-            "VEO prompts: slow cinematic camera movement, moody atmosphere, 9:16 vertical, no people's faces\n"
-            "FLUX prompts: photorealistic moody photography, cinematic shadows, cold tones, 9:16 vertical\n\n"
             "Return ONLY this JSON, no markdown:\n"
             "{\n"
             "  \"title\": \"under 50 chars, intriguing, no clickbait spam #Shorts\",\n"
@@ -201,11 +272,6 @@ class ContentAgent:
             "  \"situation_summary\": \"one short sentence summarizing the invented situation, for internal tracking only\",\n"
             "  \"tactic_name\": \"the original tactic name you invented\",\n"
             "  \"script\": \"the full voiceover script as one continuous text, ready to be read aloud\",\n"
-            "  \"visuals\": [\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 7},\n"
-            "    {\"type\": \"VEO\", \"prompt\": \"...\", \"duration\": 8},\n"
-            "    {\"type\": \"FLUX\", \"prompt\": \"...\", \"duration\": 6}\n"
-            "  ],\n"
             "  \"description\": \"#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect\",\n"
             "  \"tags\": [\"psychology\", \"selfrespect\", \"mindset\", \"shorts\", \"viral\", \"confidence\", \"relationships\", \"emotionalintelligence\", \"growth\", \"respect\"]\n"
             "}"
@@ -248,14 +314,13 @@ class ContentAgent:
                     "When you stop reacting, you take back control. "
                     "Remove the reaction, and you remove their power."
                 ),
-                "visuals": [
-                    {"type": "VEO", "prompt": "slow cinematic shot of empty dark room, cold window light, rain on glass, 9:16 vertical, no faces", "duration": 7},
-                    {"type": "VEO", "prompt": "slow push toward dark window, city lights blurred, cold atmosphere, something shifting, 9:16 vertical, no faces", "duration": 8},
-                    {"type": "FLUX", "prompt": "photorealistic silhouette in shadow against window, cold cinematic light, powerful final image, 9:16 vertical", "duration": 6}
-                ],
                 "description": "#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect",
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
             }
+
+        # Gorseller script'ten bagimsiz - eski korku formatindaki gibi
+        # yaratik/karanlik orman havuzundan rastgele secilir
+        video_data["visuals"] = self._get_horror_visuals(count=3)
 
         video_data["niche"] = "psychology"
         scenario_label = video_data.get("tactic_name") or video_data.get("title") or "unknown"
