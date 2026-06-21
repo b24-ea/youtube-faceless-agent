@@ -13,26 +13,31 @@ class VideoGenerator:
         os.environ["FAL_KEY"] = fal_key
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def generate(self, video_data):
+    def generate(self, video_data, target_duration):
+        """
+        target_duration: sesin toplam süresi (saniye). Görseller bu süreyi
+        dolduracak şekilde uzatılır / tekrarlanır.
+        """
         visuals = video_data.get("visuals", [])
         if not visuals:
             print("No visuals found")
             return None
 
+        # Her görselin süresini target_duration'a göre yeniden hesapla
+        per_visual_duration = max(4, round(target_duration / len(visuals), 1))
+
         clip_paths = []
         for i, visual in enumerate(visuals):
             visual_type = visual.get("type", "FLUX")
             prompt = visual.get("prompt", "dark cinematic scene")
-            duration = visual.get("duration", 3)
-            tension = visual.get("tension", "HOOK")
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
 
-            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "][" + tension + "]: " + prompt[:50])
+            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "]: " + prompt[:50])
 
             if visual_type == "VEO":
-                success = self._generate_veo_clip(prompt, clip_path, duration, tension)
+                success = self._generate_veo_clip(prompt, clip_path, per_visual_duration)
             else:
-                success = self._generate_flux_image(prompt, clip_path, duration, tension)
+                success = self._generate_flux_image(prompt, clip_path, per_visual_duration)
 
             if success:
                 clip_paths.append(clip_path)
@@ -42,29 +47,16 @@ class VideoGenerator:
         if not clip_paths:
             return None
 
-        return self._merge_clips(clip_paths)
+        merged = self._merge_clips(clip_paths, target_duration)
+        return merged
 
-    def _generate_veo_clip(self, prompt, save_path, duration=4, tension="HOOK"):
+    def _generate_veo_clip(self, prompt, save_path, duration):
         try:
-            # Gerilim seviyesine göre kamera yönlendirmesi ekle
-            tension_camera = {
-                "HOOK":         "ultra slow creeping push forward, barely moving, ominous stillness",
-                "MYSTERY":      "extremely slow dolly in, something wrong at edge of frame",
-                "FIRST_SIGN":   "slow push toward the darkness, camera hesitates",
-                "DREAD":        "slow tilt down then up, dread building, subtle shake",
-                "ESCALATION":   "moderate push forward with slight hand-held shake, urgency rising",
-                "CONFRONTATION":"slow pull back as creature advances, medium camera shake",
-                "PEAK_TERROR":  "fast push into creature, heavy shake, chaotic movement",
-                "AFTERMATH":    "very slow pull back to wide, stillness after chaos",
-            }
-            camera_note = tension_camera.get(tension, "slow cinematic movement")
-            enhanced_prompt = prompt + " Camera: " + camera_note + ". Cinematic horror, 9:16 vertical, no audio."
-
-            veo_duration = "6s" if duration >= 5 else "4s"
+            veo_duration = "8s" if duration >= 7 else ("6s" if duration >= 5 else "4s")
             result = fal_client.subscribe(
                 "fal-ai/veo3/fast",
                 arguments={
-                    "prompt": enhanced_prompt,
+                    "prompt": prompt + " Cinematic, dark, moody, atmospheric, 9:16 vertical video, no visible faces.",
                     "aspect_ratio": "9:16",
                     "duration": veo_duration,
                     "generate_audio": False
@@ -76,19 +68,18 @@ class VideoGenerator:
                 with open(save_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                self._trim_clip(save_path, duration)
-                print("  VEO clip ready [" + tension + "]")
+                print("  VEO clip ready")
                 return True
         except Exception as e:
             print("  VEO error: " + str(e))
         return False
 
-    def _generate_flux_image(self, prompt, save_path, duration=3, tension="HOOK"):
+    def _generate_flux_image(self, prompt, save_path, duration):
         try:
             result = fal_client.subscribe(
                 "fal-ai/flux-pro",
                 arguments={
-                    "prompt": prompt + " Photorealistic horror film still, cold desaturated blue-black, 9:16 vertical, cinematic shadows.",
+                    "prompt": prompt + " Photorealistic moody atmosphere, cold desaturated tones, cinematic shadows, 9:16 vertical, no visible faces.",
                     "image_size": "portrait_4_3",
                     "num_images": 1,
                     "safety_tolerance": "5"
@@ -101,63 +92,25 @@ class VideoGenerator:
                 img = img.resize((1080, 1920), Image.LANCZOS)
                 img_path = save_path.replace(".mp4", ".jpg")
                 img.save(img_path, "JPEG", quality=95)
-                success = self._image_to_video_kenburns(img_path, save_path, duration, tension)
-                print("  FLUX image ready [" + tension + "]")
+                success = self._image_to_video_kenburns(img_path, save_path, duration)
+                print("  FLUX image ready")
                 return success
         except Exception as e:
             print("  FLUX error: " + str(e))
         return False
 
-    def _image_to_video_kenburns(self, image_path, video_path, duration=3, tension="HOOK"):
-        """Gerilim seviyesine göre Ken Burns hareketi — başta sakin, sonda kaotik"""
+    def _image_to_video_kenburns(self, image_path, video_path, duration):
         try:
             fps = 24
-            total_frames = fps * duration
+            total_frames = int(fps * duration)
 
-            # Her gerilim seviyesi için farklı hareket hızı ve tipi
-            movements = {
-                "HOOK": [
-                    # Çok yavaş zoom in — merak uyandırır
-                    "zoompan=z='min(zoom+0.0008,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
-                    # Çok yavaş pan sola — bir şey görünecek gibi
-                    "zoompan=z='1.1':x='iw*0.05+on/({f})*iw*0.05':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "MYSTERY": [
-                    # Yavaş zoom in üst kısma — karanlıkta bir şey var
-                    "zoompan=z='min(zoom+0.001,1.2)':x='iw/2-(iw/zoom/2)':y='ih*0.1':d={f}:s=1080x1920:fps={fps}",
-                    # Yavaş pan yukarı — zeminden yukarıya
-                    "zoompan=z='1.15':x='iw/2-(iw/zoom/2)':y='ih*0.3-on/({f})*ih*0.15':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "FIRST_SIGN": [
-                    # Orta hızlı zoom in — bir şey fark edildi
-                    "zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
-                    # Sağ köşeye yavaş pan — oraya doğru bakış
-                    "zoompan=z='1.2':x='iw*0.1+on/({f})*iw*0.15':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "DREAD": [
-                    # Orta zoom, hafif titreme simülasyonu
-                    "zoompan=z='min(zoom+0.002,1.3)':x='iw/2-(iw/zoom/2)+sin(on*0.3)*3':y='ih/2-(ih/zoom/2)+cos(on*0.3)*2':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "ESCALATION": [
-                    # Daha hızlı zoom + hafif shake
-                    "zoompan=z='min(zoom+0.003,1.4)':x='iw/2-(iw/zoom/2)+sin(on*0.5)*5':y='ih/2-(ih/zoom/2)+cos(on*0.4)*4':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "CONFRONTATION": [
-                    # Zoom out + güçlü shake — panik
-                    "zoompan=z='max(zoom-0.002,1.0)':x='iw/2-(iw/zoom/2)+sin(on*0.8)*8':y='ih/2-(ih/zoom/2)+cos(on*0.7)*6':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "PEAK_TERROR": [
-                    # Hızlı zoom in + kaotik shake — maksimum korku
-                    "zoompan=z='min(zoom+0.004,1.5)':x='iw/2-(iw/zoom/2)+sin(on*1.2)*12':y='ih/2-(ih/zoom/2)+cos(on*1.0)*10':d={f}:s=1080x1920:fps={fps}",
-                ],
-                "AFTERMATH": [
-                    # Çok yavaş zoom out — sessizlik, her şey bitti
-                    "zoompan=z='max(zoom-0.001,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
-                ],
-            }
+            movements = [
+                "zoompan=z='min(zoom+0.0008,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
+                "zoompan=z='if(lte(zoom,1.0),1.2,max(1.0,zoom-0.0008))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
+                "zoompan=z='min(zoom+0.0006,1.15)':x='iw/2-(iw/zoom/2)':y='ih*0.2':d={f}:s=1080x1920:fps={fps}",
+            ]
 
-            options = movements.get(tension, movements["HOOK"])
-            chosen = random.choice(options)
+            chosen = random.choice(movements)
             vf = chosen.format(f=total_frames, fps=fps)
 
             cmd = (
@@ -170,8 +123,6 @@ class VideoGenerator:
             if result == 0 and os.path.exists(video_path):
                 return True
 
-            # Fallback
-            print("  Ken Burns failed, static fallback")
             cmd2 = (
                 "ffmpeg -y -loop 1 -i " + image_path +
                 " -c:v libx264 -t " + str(duration) +
@@ -184,23 +135,9 @@ class VideoGenerator:
             print("  Ken Burns error: " + str(e))
         return False
 
-    def _trim_clip(self, video_path, duration):
+    def _merge_clips(self, clip_paths, target_duration):
         try:
-            trimmed_path = video_path.replace(".mp4", "_trimmed.mp4")
-            cmd = (
-                "ffmpeg -y -i " + video_path +
-                " -t " + str(duration) +
-                " -c:v libx264 -an " + trimmed_path
-            )
-            result = os.system(cmd)
-            if result == 0 and os.path.exists(trimmed_path):
-                os.replace(trimmed_path, video_path)
-        except Exception as e:
-            print("  Trim error: " + str(e))
-
-    def _merge_clips(self, clip_paths):
-        try:
-            video_path = os.path.join(self.output_dir, "final_video.mp4")
+            video_path = os.path.join(self.output_dir, "visuals_merged.mp4")
             concat_file = os.path.join(self.output_dir, "concat.txt")
             normalized = []
 
@@ -228,9 +165,118 @@ class VideoGenerator:
                 " -c:v libx264 -r 24 -pix_fmt yuv420p " + video_path
             )
 
-            if os.path.exists(video_path):
-                print("Video merged: " + str(len(normalized)) + " clips")
-                return video_path
+            if not os.path.exists(video_path):
+                return None
+
+            # Görsellerin toplam süresi hedef süreden kısa kalırsa, son kareyi
+            # dondurup uzat (sesle senkron kalsın diye)
+            final_path = self._ensure_min_duration(video_path, target_duration)
+            print("Video merged: " + str(len(normalized)) + " clips")
+            return final_path
         except Exception as e:
             print("Merge error: " + str(e))
         return None
+
+    def _ensure_min_duration(self, video_path, target_duration):
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+                capture_output=True, text=True
+            )
+            current_duration = float(result.stdout.strip())
+
+            if current_duration >= target_duration - 0.3:
+                return video_path
+
+            padded_path = video_path.replace(".mp4", "_padded.mp4")
+            extra = target_duration - current_duration
+            cmd = (
+                "ffmpeg -y -i " + video_path +
+                " -vf \"tpad=stop_mode=clone:stop_duration=" + str(round(extra, 2)) + "\" " +
+                "-c:v libx264 -pix_fmt yuv420p " + padded_path
+            )
+            os.system(cmd)
+            if os.path.exists(padded_path):
+                return padded_path
+            return video_path
+        except Exception as e:
+            print("Duration pad error: " + str(e))
+        return video_path
+
+    def add_voiceover_and_captions(self, video_path, audio_path, word_timings, output_path=None):
+        """
+        Videoya ses ekler ve kelime kelime senkronize altyazı yakar (TikTok tarzı).
+        """
+        try:
+            if output_path is None:
+                output_path = os.path.join(self.output_dir, "video_with_voice.mp4")
+
+            ass_path = os.path.join(self.output_dir, "captions.ass")
+            self._write_ass_captions(word_timings, ass_path)
+
+            ass_escaped = ass_path.replace(":", "\\:").replace("\\", "/")
+
+            cmd = (
+                "ffmpeg -y -i " + video_path + " -i " + audio_path + " "
+                "-vf \"ass=" + ass_escaped + "\" "
+                "-map 0:v -map 1:a "
+                "-c:v libx264 -c:a aac -pix_fmt yuv420p -shortest " + output_path
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(output_path):
+                print("Voiceover + captions added")
+                return output_path
+
+            print("Caption burn failed, adding voice only")
+            cmd2 = (
+                "ffmpeg -y -i " + video_path + " -i " + audio_path + " "
+                "-map 0:v -map 1:a "
+                "-c:v copy -c:a aac -shortest " + output_path
+            )
+            result2 = os.system(cmd2)
+            if result2 == 0 and os.path.exists(output_path):
+                return output_path
+
+        except Exception as e:
+            print("Voiceover/caption error: " + str(e))
+        return video_path
+
+    def _write_ass_captions(self, word_timings, ass_path):
+        """Kelime kelime yığılan TikTok tarzı altyazı dosyası (.ass) üretir"""
+        header = (
+            "[Script Info]\n"
+            "ScriptType: v4.00+\n"
+            "PlayResX: 1080\n"
+            "PlayResY: 1920\n"
+            "\n"
+            "[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+            "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, "
+            "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+            "Style: Default,Arial Black,90,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,"
+            "1,6,0,2,60,60,400,1\n"
+            "\n"
+            "[Events]\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        )
+
+        events = []
+        for w in word_timings:
+            start = self._format_ass_time(w["start"])
+            end = self._format_ass_time(w["end"])
+            word_text = w["word"].upper().replace("\n", " ")
+            events.append(
+                "Dialogue: 0," + start + "," + end + ",Default,,0,0,0,,{\\fad(50,50)}" + word_text
+            )
+
+        with open(ass_path, "w", encoding="utf-8") as f:
+            f.write(header)
+            f.write("\n".join(events))
+
+    def _format_ass_time(self, seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = seconds % 60
+        return "{:01d}:{:02d}:{:05.2f}".format(h, m, s)
