@@ -15,29 +15,31 @@ class VideoGenerator:
 
     def generate(self, video_data, target_duration):
         """
-        target_duration: sesin toplam süresi (saniye). Görseller bu süreyi
-        dolduracak şekilde uzatılır / tekrarlanır.
+        target_duration: sesin toplam süresi (saniye). Görsel sayısı content_agent
+        tarafından buna göre belirlenir; burada her görsel max 4sn ile sınırlanır.
         """
         visuals = video_data.get("visuals", [])
         if not visuals:
             print("No visuals found")
             return None
 
-        # Her görselin süresini target_duration'a göre yeniden hesapla
-        per_visual_duration = max(4, round(target_duration / len(visuals), 1))
+        # Her gorsel max 4 saniye - content_agent'in verdigi duration'lar bu sinira gore kirpilir
+        MAX_VISUAL_DURATION = 4
 
         clip_paths = []
         for i, visual in enumerate(visuals):
             visual_type = visual.get("type", "FLUX")
             prompt = visual.get("prompt", "dark cinematic scene")
+            requested_duration = visual.get("duration", 4)
+            duration = min(MAX_VISUAL_DURATION, max(2, requested_duration))
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
 
-            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "]: " + prompt[:50])
+            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "][" + str(duration) + "s]: " + prompt[:50])
 
             if visual_type == "VEO":
-                success = self._generate_veo_clip(prompt, clip_path, per_visual_duration)
+                success = self._generate_veo_clip(prompt, clip_path, duration)
             else:
-                success = self._generate_flux_image(prompt, clip_path, per_visual_duration)
+                success = self._generate_flux_image(prompt, clip_path, duration)
 
             if success:
                 clip_paths.append(clip_path)
@@ -52,7 +54,8 @@ class VideoGenerator:
 
     def _generate_veo_clip(self, prompt, save_path, duration):
         try:
-            veo_duration = "8s" if duration >= 7 else ("6s" if duration >= 5 else "4s")
+            # Max 4sn kurali geregi VEO her zaman en kisa paketi (4s) kullanir
+            veo_duration = "4s"
             result = fal_client.subscribe(
                 "fal-ai/veo3/fast",
                 arguments={
@@ -258,9 +261,10 @@ class VideoGenerator:
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
             "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, "
             "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            # Kelime kelime altyazi: kuculmus boyut (62px), beyaz govde + neon sari glow + siyah kontur
-            "Style: Caption,Arial Black,62,&H00FFFFFF,&H000000FF,&H0000E6FF,&H00000000,1,0,0,0,100,100,0,0,"
-            "1,4,0,2,60,60,400,1\n"
+            # Kelime kelime altyazi: buyutulmus boyut (75px), beyaz govde + neon sari glow + siyah kontur
+            # MarginV 550 = ekranin biraz daha ustunde duruyor (oncesi 400)
+            "Style: Caption,Arial Black,75,&H00FFFFFF,&H000000FF,&H0000E6FF,&H00000000,1,0,0,0,100,100,0,0,"
+            "1,4,0,2,60,60,550,1\n"
             "\n"
             "[Events]\n"
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
