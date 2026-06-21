@@ -13,7 +13,7 @@ class ProductionAgent:
     def get_background_music(self):
         try:
             music_path = os.path.join(self.output_dir, "music.mp3")
-            
+
             creepy_music_urls = [
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Fog.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lightless%20Dawn.mp3",
@@ -46,20 +46,20 @@ class ProductionAgent:
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Evening%20of%20Chaos.mp3",
                 "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Nowhere%20Land.mp3",
             ]
-            
+
             try:
                 with open("used_music.json", "r") as f:
                     used_music = json.load(f)
             except Exception:
                 used_music = []
-            
+
             available_music = [u for u in creepy_music_urls if u not in used_music]
             if not available_music:
                 used_music = []
                 available_music = creepy_music_urls
-            
+
             random.shuffle(available_music)
-            
+
             for url in available_music:
                 try:
                     r = requests.get(url, timeout=30, headers={
@@ -85,10 +85,11 @@ class ProductionAgent:
     def add_music_to_video(self, video_path, music_path):
         try:
             output_path = os.path.join(self.output_dir, "final_with_music.mp4")
+            # Voiceover net duyulsun diye muzik cok kisik (0.12) caliyor
             cmd = (
                 "ffmpeg -y -i " + video_path + " "
                 "-stream_loop -1 -i " + music_path + " "
-                "-filter_complex \"[1:a]volume=0.3[bg];[0:a]volume=1.0[orig];[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
+                "-filter_complex \"[1:a]volume=0.12[bg];[0:a]volume=1.0[orig];[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
                 "-map 0:v -map \"[out]\" "
                 "-c:v copy -c:a aac -shortest " + output_path
             )
@@ -100,7 +101,8 @@ class ProductionAgent:
             cmd2 = (
                 "ffmpeg -y -i " + video_path + " "
                 "-stream_loop -1 -i " + music_path + " "
-                "-map 0:v -map 1:a "
+                "-filter_complex \"[1:a]volume=0.12[bg]\" "
+                "-map 0:v -map \"[bg]\" "
                 "-c:v copy -c:a aac -shortest " + output_path
             )
             result2 = os.system(cmd2)
