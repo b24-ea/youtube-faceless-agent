@@ -3,95 +3,43 @@ import random
 import os
 
 
-# Sabit liste artik birebir kullanilmiyor - Claude'a ilham/stil ornegi olarak veriliyor.
-# Claude her seferinde bunlardan FARKLI, kendi uydurdugu ozgun bir senaryo+taktik uretiyor.
-TOPICS = [
-    {
-        "trigger": "someone constantly ignores your messages or leaves you on read",
-        "tactic_name": "The Mirror Method"
-    },
-    {
-        "trigger": "someone talks down to you or belittles you in front of others",
-        "tactic_name": "The Silent Reset"
-    },
-    {
-        "trigger": "someone uses guilt to control your decisions",
-        "tactic_name": "The Detachment Frame"
-    },
-    {
-        "trigger": "someone gives you the silent treatment to punish you",
-        "tactic_name": "The Non-Reaction"
-    },
-    {
-        "trigger": "someone constantly cancels plans last minute",
-        "tactic_name": "The Value Shift"
-    },
-    {
-        "trigger": "someone tries to make you jealous on purpose",
-        "tactic_name": "The Unbothered Response"
-    },
-    {
-        "trigger": "someone love bombs you then suddenly goes cold",
-        "tactic_name": "The Pattern Recognition"
-    },
-    {
-        "trigger": "someone gaslights you into doubting your own memory",
-        "tactic_name": "The Evidence Anchor"
-    },
-    {
-        "trigger": "someone only reaches out when they need something from you",
-        "tactic_name": "The Reciprocity Test"
-    },
-    {
-        "trigger": "someone disrespects your boundaries repeatedly",
-        "tactic_name": "The Hard Line"
-    },
-    {
-        "trigger": "someone compares you to other people to control you",
-        "tactic_name": "The Comparison Immunity"
-    },
-    {
-        "trigger": "someone uses your kindness against you",
-        "tactic_name": "The Strategic Withdrawal"
-    },
-    {
-        "trigger": "someone tries to rush you into a decision or commitment",
-        "tactic_name": "The Time Delay"
-    },
-    {
-        "trigger": "someone publicly disrespects you to seem powerful",
-        "tactic_name": "The Calm Authority"
-    },
-    {
-        "trigger": "someone plays mind games to keep you uncertain",
-        "tactic_name": "The Certainty Shield"
-    },
-    {
-        "trigger": "someone takes credit for your work or effort",
-        "tactic_name": "The Quiet Documentation"
-    },
-    {
-        "trigger": "someone uses your insecurities against you",
-        "tactic_name": "The Neutral Ground"
-    },
-    {
-        "trigger": "someone tests your limits to see what they can get away with",
-        "tactic_name": "The Immediate Correction"
-    },
-    {
-        "trigger": "someone manipulates you with fake apologies and no change",
-        "tactic_name": "The Action Filter"
-    },
-    {
-        "trigger": "someone tries to isolate you from your friends or family",
-        "tactic_name": "The Outside Anchor"
-    },
+# 30 senaryo sablonu - dongusel calisir (1->30->1->...)
+# Her seferinde Claude ayni sablon uzerinde FARKLI icerik/taktik/aci uretir
+SCENARIO_TEMPLATES = [
+    "someone ignores your messages or leaves you on read",
+    "someone talks down to you or belittles you in front of others",
+    "someone uses guilt to control your decisions",
+    "someone gives you the silent treatment to punish you",
+    "someone constantly cancels plans last minute",
+    "someone tries to make you jealous on purpose",
+    "someone love bombs you then suddenly goes cold",
+    "someone gaslights you into doubting your own memory",
+    "someone only reaches out when they need something from you",
+    "someone disrespects your boundaries repeatedly",
+    "someone compares you to other people to control you",
+    "someone uses your kindness against you",
+    "someone tries to rush you into a decision or commitment",
+    "someone publicly disrespects you to seem powerful",
+    "someone plays mind games to keep you uncertain",
+    "someone takes credit for your work or ideas",
+    "someone uses your insecurities against you",
+    "someone tests your limits to see what they can get away with",
+    "someone gives fake apologies with no real change",
+    "someone tries to isolate you from your support system",
+    "someone constantly interrupts or talks over you",
+    "someone makes everything about themselves in every conversation",
+    "someone uses passive aggression instead of direct communication",
+    "someone flirts with others in front of you to get a reaction",
+    "someone dismisses your feelings and calls you too sensitive",
+    "someone spreads rumors or talks behind your back",
+    "someone never takes responsibility and always blames others",
+    "someone withdraws affection when they don't get what they want",
+    "someone constantly needs validation but never gives it back",
+    "someone makes you feel lucky to have them while treating you poorly",
 ]
 
-
-# Görseller artik script konusuyla eslesmiyor - eski korku formatindaki gibi
-# bagimsiz, COK CESITLI korku unsurlari kullaniliyor: yaratiklar, hayaletler,
-# garip varliklar, aciklanamayan fenomenler, surreal korku goruntuleri
+# Gorsel sahneler - script konusuyla eslesmiyor
+# cesitli korku unsurlari: yaratiklar, hayaletler, garip varliklar, siradisi mekanlar
 HORROR_CREATURES = [
     "impossibly tall figure with elongated limbs bent the wrong way, no face, just smooth skin, standing in darkness",
     "creature made entirely of shadow that absorbs light around it, dozens of eyes, lurking in a dark forest",
@@ -108,7 +56,6 @@ HORROR_CREATURES = [
     "pale humanoid with no eyes or mouth, just smooth featureless skin, tilting head, standing in fog",
     "figure with limbs that extend impossibly, reaching across a dark room from a doorway",
     "massive horned creature with glowing eyes, standing motionless deep in a dense dark forest",
-    # Hayaletler
     "translucent ghostly woman in a tattered white dress, floating slightly above the ground, glowing faintly in the dark",
     "semi-transparent spectral figure standing perfectly still in an old abandoned bedroom, cold blue glow",
     "ghostly child silhouette flickering in and out of visibility at the end of a dark hallway",
@@ -116,7 +63,6 @@ HORROR_CREATURES = [
     "pale glowing spirit hovering near the ceiling of an empty attic, distorted and flickering like old film",
     "ghostly figure reflected in an antique mirror, not present in the room itself, reaching through the glass",
     "spectral hands emerging from a wall, faint and translucent, fingers grasping at the air",
-    # Garip / siradisi varliklar ve fenomenler
     "impossible geometric shape hovering in the air, edges that hurt to look at, glitching reality around it",
     "swarm of black moths forming a humanoid silhouette in a dark room, slowly dispersing and reforming",
     "old television static forming a face that turns to look directly at camera, in a dark living room",
@@ -124,9 +70,7 @@ HORROR_CREATURES = [
     "floating mass of eyes blinking in unison, suspended in the darkness of an empty room",
     "shadow on the wall that moves independently of any person casting it, in a dimly lit corridor",
     "doll-like figure with cracked porcelain skin sitting upright in a dark abandoned nursery, head slowly turning",
-    "a second moon visible through a window, wrong color, pulsing faintly, something watching from below it",
     "water rising from cracks in the floor forming a humanoid shape, dripping black liquid, in a dark basement",
-    "old photograph on a wall where the person's face slowly changes when not directly observed",
 ]
 
 HORROR_LOCATIONS = [
@@ -145,7 +89,6 @@ HORROR_LOCATIONS = [
     "dark lake at midnight, mist rising off the still black water",
     "empty school hallway at 4am, lockers lining the walls, one light flickering",
     "nuclear plant ruins at night, broken machinery, eerie green emergency glow",
-    # Daha siradisi / sureal mekanlar
     "abandoned funhouse hall of mirrors, distorted reflections multiplying into infinity, dim red light",
     "endless empty parking garage at night, flickering fluorescent lights stretching into darkness",
     "old attic filled with covered furniture under white sheets, single shaft of moonlight",
@@ -158,136 +101,112 @@ HORROR_LOCATIONS = [
     "old cemetery at midnight, fog pooling between leaning gravestones, a single open grave",
 ]
 
+SCENARIO_INDEX_FILE = "scenario_index.json"
+
 
 class ContentAgent:
     def __init__(self, client):
         self.client = client
 
+    def _get_next_scenario(self):
+        """Dongusel senaryo secimi - 30 sablon sirayla gider, basa doner"""
+        try:
+            with open(SCENARIO_INDEX_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {"index": 0}
+
+        current_index = data.get("index", 0) % len(SCENARIO_TEMPLATES)
+        scenario = SCENARIO_TEMPLATES[current_index]
+
+        data["index"] = (current_index + 1) % len(SCENARIO_TEMPLATES)
+        with open(SCENARIO_INDEX_FILE, "w") as f:
+            json.dump(data, f)
+
+        print("Scenario #" + str(current_index + 1) + "/" + str(len(SCENARIO_TEMPLATES)) + ": " + scenario[:50])
+        return scenario, current_index
+
     def get_horror_visuals(self, target_duration, max_visual_duration=4):
         """
-        target_duration: toplam video suresi (saniye). Buna gore kac gorsele
-        ihtiyac oldugu hesaplanir (her gorsel max_visual_duration kadar surer).
-        Script'ten bagimsiz, cesitli korku unsurlari (yaratik/hayalet/siradisi/lokasyon)
-        havuzundan rastgele secilir.
+        target_duration'a gore gorsel sayisini hesaplar.
+        Her gorsel max_visual_duration kadar surer.
+        Script'ten bagimsiz korku/hayalet/siradisi gorseller secilir.
         """
         count = max(2, round(target_duration / max_visual_duration))
 
+        # Her 3 gorselden en az 1 lokasyon, kalanlar yaratik/hayalet olsun
         visuals = []
         for i in range(count):
-            use_creature = random.random() < 0.6  # cogu zaman yaratik/hayalet gorunsun
-            if use_creature:
-                base = random.choice(HORROR_CREATURES)
-            else:
+            if i % 3 == 2:
                 base = random.choice(HORROR_LOCATIONS)
+            else:
+                base = random.choice(HORROR_CREATURES)
 
             visual_type = "VEO" if i % 2 == 0 else "FLUX"
             duration = max_visual_duration
 
             if visual_type == "VEO":
                 prompt = (
-                    base + ". Cinematic horror, slow creeping camera movement, "
-                    "cold desaturated blue-grey color palette, dark shadows, film grain, "
-                    "9:16 vertical, no text, ominous atmosphere."
+                    "Cinematic horror short film shot. Scene: " + base + ". "
+                    "Ultra slow camera push, cold desaturated blue-black, deep shadows, "
+                    "unsettling atmosphere, photorealistic, 9:16 vertical, no visible faces."
                 )
             else:
                 prompt = (
-                    base + ". Photorealistic horror photography, dramatic lighting, "
-                    "cold desaturated blue-grey tones, deep shadows, unsettling detail, "
-                    "9:16 vertical, cinematic horror film still."
+                    "Photorealistic horror film still. Scene: " + base + ". "
+                    "Cold desaturated blue-grey, deep shadows, cinematic composition, "
+                    "something deeply wrong visible, 9:16 vertical."
                 )
 
             visuals.append({"type": visual_type, "prompt": prompt, "duration": duration})
 
         return visuals
 
-    def _get_inspiration_seed(self):
-        """Sabit listeden rastgele birkac ornek secer - Claude bunlardan ilham alir, kopyalamaz"""
-        sample = random.sample(TOPICS, k=min(4, len(TOPICS)))
-        return sample
-
-    def _get_recent_scenarios(self, limit=15):
-        """Son uretilen senaryolarin ozetini getirir, boylece Claude tekrara dusmez"""
-        history_file = "scenario_history.json"
-        try:
-            with open(history_file, "r") as f:
-                history = json.load(f)
-        except Exception:
-            history = []
-        return history[-limit:]
-
-    def _save_scenario_to_history(self, scenario_summary):
-        history_file = "scenario_history.json"
-        try:
-            with open(history_file, "r") as f:
-                history = json.load(f)
-        except Exception:
-            history = []
-
-        history.append(scenario_summary)
-        history = history[-50:]
-        with open(history_file, "w") as f:
-            json.dump(history, f)
-
     def generate_video(self, niche=None, analytics_data=None, used_concepts=None):
-        inspiration = self._get_inspiration_seed()
-        recent = self._get_recent_scenarios()
-
-        inspiration_text = "\n".join(
-            "- " + t["trigger"] + " (style example: " + t["tactic_name"] + ")" for t in inspiration
-        )
-        recent_text = "\n".join("- " + r for r in recent) if recent else "(none yet, this is the first video)"
+        scenario, scenario_index = self._get_next_scenario()
 
         prompt = (
             "You are writing a voiceover script for a YouTube Shorts video about psychology and "
             "self-respect tactics. The video teaches people how to respond with confidence when "
             "someone treats them badly.\n\n"
-            "STEP 1 — Invent a fresh, specific situation and a named tactic for it.\n"
-            "Use these only as loose inspiration for tone and style. Do NOT copy them word for word — "
-            "invent your own specific situation and your own original tactic name:\n"
-            + inspiration_text + "\n\n"
-            "These situations were already used in recent videos — your new situation must be "
-            "clearly different from all of these (different trigger, different relationship context, "
-            "different angle):\n"
-            + recent_text + "\n\n"
+            "SCENARIO TEMPLATE: " + scenario + "\n\n"
+            "IMPORTANT: This exact scenario template has been used before. You MUST create a "
+            "COMPLETELY FRESH angle, tactic, and hook for it. Think of a NEW psychological insight, "
+            "a different tactical approach, or an unexpected perspective that hasn't been covered. "
+            "The situation is the same but the lesson, the tactic name, and the advice must be "
+            "original and different from any previous video on this topic.\n\n"
+            "Some angles to consider (pick one that feels fresh and unexpected):\n"
+            "- The counterintuitive response most people would never think of\n"
+            "- The psychological reason WHY people do this (and how knowing it gives you power)\n"
+            "- The one thing you should NEVER do in this situation (and what to do instead)\n"
+            "- The long-term strategy vs the short-term emotional reaction\n"
+            "- What your response reveals about YOU vs what it reveals about THEM\n\n"
             "SCRIPT RULES — STRICT 4-PART STRUCTURE, TOTAL 25-30 SECONDS (roughly 70-85 words):\n"
-            "1. HOOK (0-6s, 1-2 short sentences): State the exact situation bluntly. Must instantly make "
-            "the viewer think 'this is literally happening to me right now'. No setup, no warmup — "
-            "drop straight into it.\n"
-            "2. CURIOSITY GAP (6-10s, 1-2 short sentences): Say that most people respond the wrong way and "
-            "it backfires, WITHOUT yet revealing the correct response. Creates a 'wait, what should I "
-            "do then?' itch that keeps them watching.\n"
+            "1. HOOK (0-6s, 1-2 short sentences): State the exact situation bluntly. Must instantly "
+            "make the viewer think 'this is literally happening to me right now'.\n"
+            "2. CURIOSITY GAP (6-10s, 1-2 short sentences): Say that most people respond the wrong "
+            "way and it backfires. Do NOT reveal the solution yet.\n"
             "3. SOLUTION (10-23s, 3-4 punchy sentences): Deliver the actual tactic clearly and "
-            "specifically. Concrete and actionable, not vague self-help fluff — sound like an expert "
-            "revealing an insider secret. This is the longest section.\n"
-            "4. CLOSING LINE (23-29s, 1 short sentence): A sharp, memorable, slightly dark/powerful "
-            "statement that locks in the mindset shift. Should feel quotable, like a line people would "
-            "screenshot.\n\n"
-            "- IMPORTANT: aim for the FULL 25-30 second range, not less. A script that is too short "
-            "(under 70 words) is just as wrong as one that is too long (over 90 words) — both break "
-            "the video's timing.\n"
-            "- Tone: calm, controlled, slightly dark and serious — like someone who has mastered "
-            "emotional control speaking with quiet authority. NOT motivational-speaker energy. "
-            "NOT cheerful. Think: a strategist, not a cheerleader.\n"
-            "- Use 'you' directly. Short sentences. No filler words. No emojis in the script text.\n"
-            "- Every single word must earn its place, but do not rush — fill the full 25-30 seconds "
-            "with substance, not padding.\n"
-            "- Do NOT use the words 'manipulate' or 'manipulation' — keep it framed as self-respect "
-            "and emotional intelligence, not as scheming against others.\n\n"
+            "specifically. Concrete, actionable, expert-level insight.\n"
+            "4. CLOSING LINE (23-29s, 1 short sentence): Sharp, memorable, slightly dark. Quotable.\n\n"
+            "- Tone: calm, controlled, slightly dark — a strategist, not a cheerleader.\n"
+            "- Use 'you' directly. Short sentences. No filler words.\n"
+            "- Do NOT use 'manipulate' or 'manipulation'.\n"
+            "- Aim for the FULL 25-30 seconds — 70-85 words minimum.\n\n"
             "Return ONLY this JSON, no markdown:\n"
             "{\n"
-            "  \"title\": \"under 50 chars, intriguing, no clickbait spam #Shorts\",\n"
+            "  \"title\": \"under 50 chars, intriguing #Shorts\",\n"
             "  \"format\": \"PSYCHOLOGY\",\n"
-            "  \"situation_summary\": \"one short sentence summarizing the invented situation, for internal tracking only\",\n"
-            "  \"tactic_name\": \"the original tactic name you invented\",\n"
-            "  \"script\": \"the full voiceover script as one continuous text, ready to be read aloud\",\n"
+            "  \"tactic_name\": \"your original tactic name\",\n"
+            "  \"script\": \"the full voiceover script ready to be read aloud\",\n"
             "  \"description\": \"#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect\",\n"
             "  \"tags\": [\"psychology\", \"selfrespect\", \"mindset\", \"shorts\", \"viral\", \"confidence\", \"relationships\", \"emotionalintelligence\", \"growth\", \"respect\"]\n"
             "}"
         )
 
-        return self._call_claude(prompt)
+        return self._call_claude(prompt, scenario, scenario_index)
 
-    def _call_claude(self, prompt):
+    def _call_claude(self, prompt, scenario, scenario_index):
         response = self.client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2000,
@@ -305,38 +224,27 @@ class ContentAgent:
                     content = part.strip()
                     break
 
-        fallback_topic = random.choice(TOPICS)
-
         try:
             video_data = json.loads(content)
         except Exception:
             video_data = {
-                "title": fallback_topic["tactic_name"] + " #Shorts",
+                "title": "They're testing you. Here's what to do. #Shorts",
                 "format": "PSYCHOLOGY",
-                "situation_summary": fallback_topic["trigger"],
-                "tactic_name": fallback_topic["tactic_name"],
+                "tactic_name": "The Strategic Pause",
                 "script": (
-                    "If " + fallback_topic["trigger"] + ", do not react with emotion. "
-                    "Most people respond the wrong way, and it backfires every time. "
-                    "Stay completely silent and create distance instead. "
-                    "When you stop reacting, you take back control. "
-                    "Remove the reaction, and you remove their power."
+                    "If " + scenario + ", most people react immediately — and that's exactly what they want. "
+                    "Reacting gives them control. Instead, go completely silent. "
+                    "Not to punish them — to recalibrate yourself. "
+                    "When you respond from a place of calm, not emotion, you become unreadable. "
+                    "And an unreadable person is an untouchable person."
                 ),
                 "description": "#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect",
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
             }
 
-        # NOT: Gorseller burada uretilmiyor artik. agent.py icinde ses suresi
-        # (target_duration) belli olduktan sonra content_agent.get_horror_visuals(target_duration)
-        # cagrilarak gorsel sayisi otomatik hesaplanir (her gorsel max 4sn).
-
         video_data["niche"] = "psychology"
-        scenario_label = video_data.get("tactic_name") or video_data.get("title") or "unknown"
-        video_data["scenario"] = scenario_label
-
-        summary_for_history = video_data.get("situation_summary", "") + " (" + scenario_label + ")"
-        self._save_scenario_to_history(summary_for_history)
-
+        video_data["scenario"] = scenario
+        video_data["scenario_index"] = scenario_index
         return video_data
 
     def _get_performance_insight(self, analytics_data):
