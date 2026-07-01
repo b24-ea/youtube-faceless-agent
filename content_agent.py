@@ -109,19 +109,15 @@ class ContentAgent:
         self.client = client
 
     def _get_next_scenario(self):
-        """Dongusel senaryo secimi - 30 sablon sirayla gider, basa doner"""
-        try:
-            with open(SCENARIO_INDEX_FILE, "r") as f:
-                data = json.load(f)
-        except Exception:
-            data = {"index": 0}
-
-        current_index = data.get("index", 0) % len(SCENARIO_TEMPLATES)
+        """
+        Tarihe dayali senaryo secimi - GitHub Actions'ta dosya state'i korunmadigi icin
+        yilin gunune gore secilir. Her farkli gunde farkli sablon garanti edilir.
+        30 sablon, yaklasik 10 haftada bir tam tur atar (haftada 3 video ile).
+        """
+        from datetime import datetime
+        day_of_year = datetime.now().timetuple().tm_yday
+        current_index = day_of_year % len(SCENARIO_TEMPLATES)
         scenario = SCENARIO_TEMPLATES[current_index]
-
-        data["index"] = (current_index + 1) % len(SCENARIO_TEMPLATES)
-        with open(SCENARIO_INDEX_FILE, "w") as f:
-            json.dump(data, f)
 
         print("Scenario #" + str(current_index + 1) + "/" + str(len(SCENARIO_TEMPLATES)) + ": " + scenario[:50])
         return scenario, current_index
