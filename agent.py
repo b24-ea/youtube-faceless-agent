@@ -58,7 +58,7 @@ def main():
     print("Target video duration: " + str(round(target_duration, 1)) + "s (audio: " + str(round(audio_duration, 1)) + "s)")
 
     print("\nPicking horror visuals (max 4s each)...")
-    video_data["visuals"] = content_agent.get_horror_visuals(target_duration, max_visual_duration=4)
+    video_data["visuals"] = content_agent.get_horror_visuals(target_duration, max_visual_duration=8)
     print(str(len(video_data["visuals"])) + " visuals selected")
 
     print("\nDownloading background music...")
