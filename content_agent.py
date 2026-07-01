@@ -206,37 +206,83 @@ class ContentAgent:
 
         return self._call_claude(prompt, scenario, scenario_index)
 
-    def _call_claude(self, prompt, scenario, scenario_index):
-        response = self.client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
+    def _extract_json(self, content):
+        """Claude ciktisindan JSON'u guvenli sekilde cikarir"""
+        content = content.strip()
 
-        content = response.content[0].text.strip()
+        # Markdown blogu varsa temizle
         if "```" in content:
             parts = content.split("```")
             for part in parts:
-                if part.startswith("json"):
-                    content = part[4:].strip()
-                    break
-                elif "{" in part:
-                    content = part.strip()
+                cleaned = part.strip()
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:].strip()
+                if cleaned.startswith("{"):
+                    content = cleaned
                     break
 
-        try:
-            video_data = json.loads(content)
-        except Exception:
+        # Ilk { ile son } arasini al (Claude bazen aciklama ekler)
+        start = content.find("{")
+        end = content.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            content = content[start:end + 1]
+
+        return json.loads(content)
+
+    def _call_claude(self, prompt, scenario, scenario_index):
+        video_data = None
+
+        # 2 deneme: ilk deneme basarisizsa Claude'a tekrar sor
+        for attempt in range(2):
+            try:
+                response = self.client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text
+                video_data = self._extract_json(content)
+
+                # Zorunlu alanlar var mi kontrol et
+                if video_data.get("title") and video_data.get("script"):
+                    break
+                else:
+                    print("Attempt " + str(attempt + 1) + ": JSON parsed but missing fields, retrying...")
+                    video_data = None
+            except Exception as e:
+                print("Attempt " + str(attempt + 1) + " parse error: " + str(e))
+                video_data = None
+
+        if video_data is None:
+            # Dinamik fallback - her seferinde farkli olsun
+            print("WARNING: Using fallback content (Claude JSON failed twice)")
+            fallback_tactics = [
+                ("The Strategic Pause", "go completely silent and let the silence do the talking"),
+                ("The Gray Rock Method", "become so emotionally neutral that you give them nothing to feed on"),
+                ("The Reverse Frame", "respond as if their behavior says everything about them and nothing about you"),
+                ("The Value Reset", "quietly redirect your time and energy to people who reciprocate"),
+                ("The Calm Mirror", "reflect their energy back without absorbing any of it"),
+                ("The Detached Observer", "watch their behavior like data, not like a personal attack"),
+            ]
+            tactic_name, tactic_action = random.choice(fallback_tactics)
+            hook_starters = [
+                "Here's the truth nobody tells you: if ",
+                "Pay attention, because this matters: when ",
+                "Stop what you're doing if this sounds familiar: ",
+                "This is a pattern you need to recognize: ",
+            ]
+            hook = random.choice(hook_starters)
+
             video_data = {
-                "title": "They're testing you. Here's what to do. #Shorts",
+                "title": tactic_name + " — try this #Shorts",
                 "format": "PSYCHOLOGY",
-                "tactic_name": "The Strategic Pause",
+                "tactic_name": tactic_name,
                 "script": (
-                    "If " + scenario + ", most people react immediately — and that's exactly what they want. "
-                    "Reacting gives them control. Instead, go completely silent. "
-                    "Not to punish them — to recalibrate yourself. "
-                    "When you respond from a place of calm, not emotion, you become unreadable. "
-                    "And an unreadable person is an untouchable person."
+                    hook + scenario + ", most people react emotionally — and that reaction is exactly "
+                    "what feeds the behavior. Instead, " + tactic_action + ". "
+                    "This is called " + tactic_name + ". "
+                    "It works because it removes the reward they were looking for. "
+                    "No reaction, no reward. No reward, no repeat."
                 ),
                 "description": "#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect",
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
