@@ -15,36 +15,43 @@ class VideoGenerator:
 
     def generate(self, video_data, target_duration):
         """
-        target_duration: sesin toplam süresi (saniye). Görsel sayısı content_agent
-        tarafından buna göre belirlenir; burada her görsel max 4sn ile sınırlanır.
+        target_duration: sesin toplam suresi (saniye). content_agent zaten
+        3-4 VEO + 3-4 FLUX gorseli suresini hesaplayip veriyor.
+        VEO basarisiz olursa o slot FLUX ile doldurulur (bos slot kalmaz).
         """
         visuals = video_data.get("visuals", [])
         if not visuals:
             print("No visuals found")
             return None
 
-        # Her gorsel max 4 saniye - content_agent'in verdigi duration'lar bu sinira gore kirpilir
-        MAX_VISUAL_DURATION = 4
-
         clip_paths = []
         for i, visual in enumerate(visuals):
             visual_type = visual.get("type", "FLUX")
             prompt = visual.get("prompt", "dark cinematic scene")
-            requested_duration = visual.get("duration", 4)
-            duration = min(MAX_VISUAL_DURATION, max(2, requested_duration))
+            duration = visual.get("duration", 5)
             clip_path = os.path.join(self.output_dir, "clip_" + str(i) + ".mp4")
 
-            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "][" + str(duration) + "s]: " + prompt[:50])
+            print("Visual " + str(i+1) + "/" + str(len(visuals)) + " [" + visual_type + "][" + str(round(duration, 1)) + "s]: " + prompt[:50])
 
+            success = False
             if visual_type == "VEO":
                 success = self._generate_veo_clip(prompt, clip_path, duration)
+                if not success:
+                    print("  VEO failed, retrying once...")
+                    success = self._generate_veo_clip(prompt, clip_path, duration)
+                if not success:
+                    print("  VEO failed twice, falling back to FLUX for this slot")
+                    success = self._generate_flux_image(prompt, clip_path, duration)
             else:
                 success = self._generate_flux_image(prompt, clip_path, duration)
+                if not success:
+                    print("  FLUX failed, retrying once...")
+                    success = self._generate_flux_image(prompt, clip_path, duration)
 
             if success:
                 clip_paths.append(clip_path)
             else:
-                print("Visual " + str(i+1) + " failed, skipping")
+                print("Visual " + str(i+1) + " failed twice, skipping (rare)")
 
         if not clip_paths:
             return None
@@ -54,8 +61,11 @@ class VideoGenerator:
 
     def _generate_veo_clip(self, prompt, save_path, duration):
         try:
-            # Max 4sn kurali geregi VEO her zaman en kisa paketi (4s) kullanir
-            veo_duration = "4s"
+            # fal.ai VEO3 fast sadece 4s/6s/8s kabul eder, en yakinini secip sonra kirpiyoruz
+            allowed = [4, 6, 8]
+            veo_pick = min(allowed, key=lambda x: abs(x - duration))
+            veo_duration = str(veo_pick) + "s"
+
             result = fal_client.subscribe(
                 "fal-ai/veo3/fast",
                 arguments={
@@ -71,8 +81,10 @@ class VideoGenerator:
                 with open(save_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                print("  VEO clip ready")
-                return True
+                # Istenen tam sureye kirp (veo_pick'ten kucukse trim etkisiz kalir, sorun degil)
+                if duration < veo_pick:
+                    self._trim_clip(save_path, duration)
+                return os.path.exists(save_path) and os.path.getsize(save_path) > 1000
         except Exception as e:
             print("  VEO error: " + str(e))
         return False
@@ -95,9 +107,7 @@ class VideoGenerator:
                 img = img.resize((1080, 1920), Image.LANCZOS)
                 img_path = save_path.replace(".mp4", ".jpg")
                 img.save(img_path, "JPEG", quality=95)
-                success = self._image_to_video_kenburns(img_path, save_path, duration)
-                print("  FLUX image ready")
-                return success
+                return self._image_to_video_kenburns(img_path, save_path, duration)
         except Exception as e:
             print("  FLUX error: " + str(e))
         return False
@@ -105,7 +115,7 @@ class VideoGenerator:
     def _image_to_video_kenburns(self, image_path, video_path, duration):
         try:
             fps = 24
-            total_frames = int(fps * duration)
+            total_frames = max(1, int(fps * duration))
 
             movements = [
                 "zoompan=z='min(zoom+0.0008,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={f}:s=1080x1920:fps={fps}",
@@ -123,7 +133,7 @@ class VideoGenerator:
                 " -pix_fmt yuv420p -an " + video_path
             )
             result = os.system(cmd)
-            if result == 0 and os.path.exists(video_path):
+            if result == 0 and os.path.exists(video_path) and os.path.getsize(video_path) > 1000:
                 return True
 
             cmd2 = (
@@ -132,11 +142,25 @@ class VideoGenerator:
                 " -vf scale=1080:1920 -pix_fmt yuv420p -an " + video_path
             )
             result2 = os.system(cmd2)
-            return result2 == 0 and os.path.exists(video_path)
+            return result2 == 0 and os.path.exists(video_path) and os.path.getsize(video_path) > 1000
 
         except Exception as e:
             print("  Ken Burns error: " + str(e))
         return False
+
+    def _trim_clip(self, video_path, duration):
+        try:
+            trimmed_path = video_path.replace(".mp4", "_trimmed.mp4")
+            cmd = (
+                "ffmpeg -y -i " + video_path +
+                " -t " + str(duration) +
+                " -c:v libx264 -an " + trimmed_path
+            )
+            result = os.system(cmd)
+            if result == 0 and os.path.exists(trimmed_path) and os.path.getsize(trimmed_path) > 1000:
+                os.replace(trimmed_path, video_path)
+        except Exception as e:
+            print("  Trim error: " + str(e))
 
     def _merge_clips(self, clip_paths, target_duration):
         try:
@@ -153,7 +177,7 @@ class VideoGenerator:
                     "-c:v libx264 -r 24 -pix_fmt yuv420p -an " + norm_path
                 )
                 os.system(cmd)
-                if os.path.exists(norm_path):
+                if os.path.exists(norm_path) and os.path.getsize(norm_path) > 1000:
                     normalized.append(norm_path)
 
             if not normalized:
@@ -171,16 +195,19 @@ class VideoGenerator:
             if not os.path.exists(video_path):
                 return None
 
-            # Görsellerin toplam süresi hedef süreden kısa kalırsa, son kareyi
-            # dondurup uzat (sesle senkron kalsın diye)
-            final_path = self._ensure_min_duration(video_path, target_duration)
+            final_path = self._ensure_min_duration(video_path, target_duration, normalized)
             print("Video merged: " + str(len(normalized)) + " clips")
             return final_path
         except Exception as e:
             print("Merge error: " + str(e))
         return None
 
-    def _ensure_min_duration(self, video_path, target_duration):
+    def _ensure_min_duration(self, video_path, target_duration, source_clips):
+        """
+        Gorsel toplam suresi hedeften kisa kalirsa, tek kareyi dondurmak yerine
+        mevcut klipleri BASTAN tekrar dongusel olarak ekleyip doldurur.
+        Boylece 'son 15-20sn sadece durgun resim' gorunumu olusmaz, hareket devam eder.
+        """
         try:
             import subprocess
             result = subprocess.run(
@@ -190,27 +217,70 @@ class VideoGenerator:
             )
             current_duration = float(result.stdout.strip())
 
-            if current_duration >= target_duration - 0.3:
+            gap = target_duration - current_duration
+            if gap <= 1.0:
                 return video_path
 
-            padded_path = video_path.replace(".mp4", "_padded.mp4")
-            extra = target_duration - current_duration
-            cmd = (
-                "ffmpeg -y -i " + video_path +
-                " -vf \"tpad=stop_mode=clone:stop_duration=" + str(round(extra, 2)) + "\" " +
-                "-c:v libx264 -pix_fmt yuv420p " + padded_path
+            print("Visual gap of " + str(round(gap, 1)) + "s detected, looping clips to fill (not freezing)")
+
+            # Kucuk bosluk (<=3s): son kareyi dondur (yeterince kisa, fark edilmez)
+            if gap <= 3.0:
+                padded_path = video_path.replace(".mp4", "_padded.mp4")
+                cmd = (
+                    "ffmpeg -y -i " + video_path +
+                    " -vf \"tpad=stop_mode=clone:stop_duration=" + str(round(gap, 2)) + "\" " +
+                    "-c:v libx264 -pix_fmt yuv420p " + padded_path
+                )
+                os.system(cmd)
+                if os.path.exists(padded_path):
+                    return padded_path
+                return video_path
+
+            # Buyuk bosluk: mevcut klipleri bastan tekrar ekleyerek doldur (donuk kalmasin)
+            concat_file = os.path.join(self.output_dir, "concat_loop.txt")
+            looped_path = os.path.join(self.output_dir, "visuals_looped.mp4")
+
+            with open(concat_file, "w") as f:
+                # Once orijinal video
+                f.write("file '" + os.path.abspath(video_path) + "'\n")
+                # Sonra bosluk kapanana kadar kaynak klipleri sirayla tekrar ekle
+                remaining = gap
+                idx = 0
+                while remaining > 0 and source_clips:
+                    clip = source_clips[idx % len(source_clips)]
+                    f.write("file '" + os.path.abspath(clip) + "'\n")
+                    # Her klibin ~ort. suresini varsayimsal 5s kabul edip azalt
+                    remaining -= 5
+                    idx += 1
+                    if idx > 20:  # guvenlik siniri, sonsuz donguyu engelle
+                        break
+
+            os.system(
+                "ffmpeg -y -f concat -safe 0 -i " + concat_file +
+                " -c:v libx264 -r 24 -pix_fmt yuv420p " + looped_path
             )
-            os.system(cmd)
-            if os.path.exists(padded_path):
-                return padded_path
+
+            if os.path.exists(looped_path):
+                # Son olarak tam target_duration'a kirp (fazla gelirse)
+                trimmed_path = looped_path.replace(".mp4", "_final.mp4")
+                cmd = (
+                    "ffmpeg -y -i " + looped_path +
+                    " -t " + str(round(target_duration, 2)) +
+                    " -c:v libx264 -pix_fmt yuv420p " + trimmed_path
+                )
+                os.system(cmd)
+                if os.path.exists(trimmed_path):
+                    return trimmed_path
+                return looped_path
+
             return video_path
         except Exception as e:
-            print("Duration pad error: " + str(e))
+            print("Duration fill error: " + str(e))
         return video_path
 
     def add_voiceover_and_captions(self, video_path, audio_path, word_timings, output_path=None, total_duration=None):
         """
-        Videoya ses ekler, kelime kelime senkronize altyazı ve sabit kanal adı yakar.
+        Videoya ses ekler, kelime kelime senkronize altyazı yakar.
         """
         try:
             if output_path is None:
@@ -261,8 +331,6 @@ class VideoGenerator:
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
             "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, "
             "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            # Kelime kelime altyazi: buyutulmus boyut (75px), beyaz govde + neon sari glow + siyah kontur
-            # MarginV 550 = ekranin biraz daha ustunde duruyor (oncesi 400)
             "Style: Caption,Arial Black,75,&H00FFFFFF,&H000000FF,&H0000E6FF,&H00000000,1,0,0,0,100,100,0,0,"
             "1,4,0,2,60,60,550,1\n"
             "\n"
@@ -271,9 +339,6 @@ class VideoGenerator:
         )
 
         events = []
-
-        # Kelime kelime altyazi - neon sari glow icin {\blur} tag'i kullanilir
-        # OutlineColour &H0000E6FF = neon sari (BGR formatinda), blur ile glow efekti verilir
         for w in word_timings:
             start = self._format_ass_time(w["start"])
             end = self._format_ass_time(w["end"])
