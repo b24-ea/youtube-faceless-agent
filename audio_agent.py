@@ -8,12 +8,12 @@ class AudioAgent:
         self.output_dir = "output"
         os.makedirs(self.output_dir, exist_ok=True)
         self.api_key = os.environ.get("ELEVENLABS_API_KEY", "")
-        # Adam - stabil, derin, otoriter erkek sesi (her hesapta varsayılan olarak bulunur)
+        # Adam - stabil, derin, otoriter erkek sesi (her hesapta varsayilan olarak bulunur)
         self.voice_id = "pNInz6obpgDQGcFmaJgB"
 
     def generate_voiceover(self, script_text):
         """
-        ElevenLabs ile ses üretir ve kelime kelime zamanlama bilgisi döner.
+        ElevenLabs ile ses uretir ve kelime kelime zamanlama bilgisi doner.
         Returns: (audio_path, duration_seconds, word_timings) ya da (None, 0, [])
         """
         try:
@@ -63,7 +63,7 @@ class AudioAgent:
             return None, 0, []
 
     def _build_word_timings(self, alignment):
-        """ElevenLabs karakter bazlı zamanlamasını kelime bazlı zamanlamaya çevirir"""
+        """ElevenLabs karakter bazli zamanlamasini kelime bazli zamanlamaya cevirir"""
         try:
             chars = alignment.get("characters", [])
             starts = alignment.get("character_start_times_seconds", [])
