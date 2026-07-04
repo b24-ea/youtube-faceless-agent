@@ -9,12 +9,10 @@ from publish_agent import PublishAgent
 from analytics_agent import AnalyticsAgent
 
 
-# Video suresi bu aralikta olmasi hedeflenir (saniye).
-# NOT: ses suresi MAX_DURATION'i asarsa video KISILMAZ, sesin tam suresine gore uretilir
-# (aksi halde konusma/altyazi yarida kesilir). Bu yuzden script uzunlugu content_agent'ta
-# bu hedefe gore ayarlanmali.
-MIN_DURATION = 25
-MAX_DURATION = 30
+# Video suresi hedefi (saniye). Script bu araliga gore yazdiriliyor (25-35s),
+# ses suresi asla zorla kesilmez - kesilme/senkron sorunlarini onlemek icin.
+MIN_DURATION = 20
+MAX_DURATION = 35
 
 
 def main():
@@ -34,6 +32,7 @@ def main():
     video_data = content_agent.generate_video()
     print("Title: " + str(video_data.get("title", "N/A")))
     print("Topic: " + str(video_data.get("scenario", "N/A")))
+    print("Tactic: " + str(video_data.get("tactic_name", "N/A")))
 
     script = video_data.get("script", "")
     if not script:
@@ -46,9 +45,7 @@ def main():
         print("ERROR: Voiceover generation failed")
         return
 
-    # Ses suresi asla kirpilmaz - video her zaman sesin TAMAMINI kapsayacak
-    # sekilde uretilir, boylece konusma/altyazi yarida kesilmez.
-    # MIN_DURATION sadece sesin cok kisa gelmesi durumunda alt sinir olarak kullanilir.
+    # Ses suresi asla kirpilmaz - video her zaman sesin tam suresini kapsar.
     target_duration = max(MIN_DURATION, audio_duration + 0.5)
 
     if audio_duration > MAX_DURATION + 3:
@@ -57,8 +54,8 @@ def main():
 
     print("Target video duration: " + str(round(target_duration, 1)) + "s (audio: " + str(round(audio_duration, 1)) + "s)")
 
-    print("\nPicking horror visuals (max 4s each)...")
-    video_data["visuals"] = content_agent.get_horror_visuals(target_duration, max_visual_duration=8)
+    print("\nPicking horror visuals (3-4 VEO + 3-4 FLUX)...")
+    video_data["visuals"] = content_agent.get_horror_visuals(target_duration)
     print(str(len(video_data["visuals"])) + " visuals selected")
 
     print("\nDownloading background music...")
@@ -71,7 +68,7 @@ def main():
         return
 
     print("\nAdding voiceover and word-by-word captions...")
-    video_path = video_gen.add_voiceover_and_captions(visuals_path, audio_path, word_timings)
+    video_path = video_gen.add_voiceover_and_captions(visuals_path, audio_path, word_timings, total_duration=target_duration)
 
     if music_path:
         print("\nAdding background music...")
@@ -84,7 +81,7 @@ def main():
         print("Uploaded! Video ID: " + video_id)
         analytics.save_video_performance(video_id, "psychology", video_data)
     else:
-        print("Upload skipped — not a publish day")
+        print("Upload skipped")
 
     print("\n" + "="*50)
     print("Done: " + str(datetime.now()))
