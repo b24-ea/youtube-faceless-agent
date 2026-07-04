@@ -15,10 +15,12 @@ class PublishAgent:
         ]
 
     def upload(self, video_path, video_data):
+        # Gunluk 2x paylasim icin gun kisitlamasi kaldirildi - her calismada yukler
         youtube = self._get_youtube_client()
-        title = video_data.get("title", "Horror Video")
+        title = video_data.get("title", "Video")
         if "#Shorts" not in title:
             title = title + " #Shorts"
+
         body = {
             "snippet": {
                 "title": title,
@@ -31,6 +33,7 @@ class PublishAgent:
                 "selfDeclaredMadeForKids": False
             }
         }
+
         media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True)
         request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
         response = request.execute()
@@ -42,6 +45,7 @@ class PublishAgent:
         token_b64 = os.environ.get("YOUTUBE_TOKEN")
         if not token_b64:
             raise ValueError("YOUTUBE_TOKEN not found!")
+
         token_data = json.loads(base64.b64decode(token_b64).decode())
         creds = Credentials(
             token=token_data.get("token"),
