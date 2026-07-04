@@ -1,12 +1,12 @@
 import json
 import random
 import os
+from datetime import datetime
 
 
-# 30 senaryo sablonu - dongusel calisir (1->30->1->...)
-# Her seferinde Claude ayni sablon uzerinde FARKLI icerik/taktik/aci uretir
+# 30 senaryo sablonu - tarihe gore secilir, gunun saatine gore de kayar
+# boylece ayni gunde 2 video paylasilinca ikisi de farkli sablon alir
 SCENARIO_TEMPLATES = [
-    "someone ignores your messages or leaves you on read",
     "someone talks down to you or belittles you in front of others",
     "someone uses guilt to control your decisions",
     "someone gives you the silent treatment to punish you",
@@ -38,8 +38,30 @@ SCENARIO_TEMPLATES = [
     "someone makes you feel lucky to have them while treating you poorly",
 ]
 
-# Gorsel sahneler - script konusuyla eslesmiyor
-# cesitli korku unsurlari: yaratiklar, hayaletler, garip varliklar, siradisi mekanlar
+# Zorla verilen bakis acisi - her cagirmada rastgele biri secilir,
+# Claude'a "sadece bunu kullan" denir, boylece ayni senaryo tekrar gelse bile
+# icerik yapisal olarak farkli olur
+FORCED_ANGLES = [
+    "the counterintuitive response most people would never think of",
+    "the psychological reason WHY people do this, and how knowing it gives you power",
+    "the one thing you should NEVER do in this situation, and what to do instead",
+    "the long-term strategy vs the short-term emotional reaction",
+    "what your response reveals about YOU vs what it reveals about THEM",
+    "a real-world analogy that reframes the entire situation",
+    "the exact phrase or action that shuts the behavior down immediately",
+    "why reacting fast is the trap, and what patience actually does",
+]
+
+# Baslik yapisi cesitliligi - her seferinde farkli bir kalip zorlanir
+TITLE_STYLES = [
+    "a short direct statement (e.g. 'Stop Replying To Silence')",
+    "a question that creates curiosity (e.g. 'Why Do They Go Quiet?')",
+    "a bold command (e.g. 'Never Chase Someone Who Ignores You')",
+    "a 'do this instead' format (e.g. 'Do This When They Go Cold')",
+    "a number or specific claim (e.g. 'The 1 Response That Ends It')",
+    "an intriguing fragment (e.g. 'The Silence That Changes Everything')",
+]
+
 HORROR_CREATURES = [
     "impossibly tall figure with elongated limbs bent the wrong way, no face, just smooth skin, standing in darkness",
     "creature made entirely of shadow that absorbs light around it, dozens of eyes, lurking in a dark forest",
@@ -101,7 +123,8 @@ HORROR_LOCATIONS = [
     "old cemetery at midnight, fog pooling between leaning gravestones, a single open grave",
 ]
 
-SCENARIO_INDEX_FILE = "scenario_index.json"
+# fal.ai VEO3 fast sadece belirli sure degerlerini kabul ediyor
+VEO_ALLOWED_DURATIONS = [4, 6, 8]
 
 
 class ContentAgent:
@@ -110,36 +133,44 @@ class ContentAgent:
 
     def _get_next_scenario(self):
         """
-        Tarihe dayali senaryo secimi - GitHub Actions'ta dosya state'i korunmadigi icin
-        yilin gunune gore secilir. Her farkli gunde farkli sablon garanti edilir.
-        30 sablon, yaklasik 10 haftada bir tam tur atar (haftada 3 video ile).
+        Tarih + saat dilimine gore senaryo secimi. Gunde 2 video paylasildiginda
+        (sabah/aksam) farkli sablon almalari icin saat bazli kaydirma uygulanir.
         """
-        from datetime import datetime
-        day_of_year = datetime.now().timetuple().tm_yday
-        current_index = day_of_year % len(SCENARIO_TEMPLATES)
+        now = datetime.now()
+        day_of_year = now.timetuple().tm_yday
+        # Gunun ilk yarisinda mi (sabah run'i) ikinci yarisinda mi (aksam run'i) oldugunu
+        # ayirt etmek icin saat kullanilir. Aksam run'i listede yariya yakin kaydirilir.
+        hour_offset = (len(SCENARIO_TEMPLATES) // 2) if now.hour >= 12 else 0
+
+        current_index = (day_of_year + hour_offset) % len(SCENARIO_TEMPLATES)
         scenario = SCENARIO_TEMPLATES[current_index]
 
-        print("Scenario #" + str(current_index + 1) + "/" + str(len(SCENARIO_TEMPLATES)) + ": " + scenario[:50])
+        print("Scenario #" + str(current_index + 1) + "/" + str(len(SCENARIO_TEMPLATES)) +
+              " (hour_offset=" + str(hour_offset) + "): " + scenario[:50])
         return scenario, current_index
 
-    def get_horror_visuals(self, target_duration, max_visual_duration=4):
+    def get_horror_visuals(self, target_duration):
         """
-        target_duration'a gore gorsel sayisini hesaplar.
-        Her gorsel max_visual_duration kadar surer.
-        Script'ten bagimsiz korku/hayalet/siradisi gorseller secilir.
+        3-4 VEO + 3-4 FLUX gorseli uretir, toplam target_duration'a (max 35sn)
+        gore suresi dagitilir. Script'ten bagimsiz, cesitli korku unsurlari kullanilir.
         """
-        count = max(2, round(target_duration / max_visual_duration))
+        veo_count = random.choice([3, 4])
+        flux_count = random.choice([3, 4])
+        total_count = veo_count + flux_count
 
-        # Her 3 gorselden en az 1 lokasyon, kalanlar yaratik/hayalet olsun
+        per_duration = target_duration / total_count
+
+        # VEO icin en yakin izinli sureyi sec (4/6/8), sonra ffmpeg ile tam sureye kirpilir
+        veo_duration = min(VEO_ALLOWED_DURATIONS, key=lambda x: abs(x - per_duration))
+
+        # Tip sirasini olustur ve karistir (hepsi VEO sonra hepsi FLUX olmasin, karisik gelsin)
+        types = ["VEO"] * veo_count + ["FLUX"] * flux_count
+        random.shuffle(types)
+
         visuals = []
-        for i in range(count):
-            if i % 3 == 2:
-                base = random.choice(HORROR_LOCATIONS)
-            else:
-                base = random.choice(HORROR_CREATURES)
-
-            visual_type = "VEO" if i % 2 == 0 else "FLUX"
-            duration = max_visual_duration
+        for i, visual_type in enumerate(types):
+            use_creature = random.random() < 0.65
+            base = random.choice(HORROR_CREATURES) if use_creature else random.choice(HORROR_LOCATIONS)
 
             if visual_type == "VEO":
                 prompt = (
@@ -147,53 +178,57 @@ class ContentAgent:
                     "Ultra slow camera push, cold desaturated blue-black, deep shadows, "
                     "unsettling atmosphere, photorealistic, 9:16 vertical, no visible faces."
                 )
+                duration = veo_duration
             else:
                 prompt = (
                     "Photorealistic horror film still. Scene: " + base + ". "
                     "Cold desaturated blue-grey, deep shadows, cinematic composition, "
                     "something deeply wrong visible, 9:16 vertical."
                 )
+                duration = round(per_duration, 1)
 
             visuals.append({"type": visual_type, "prompt": prompt, "duration": duration})
 
+        print(str(veo_count) + " VEO + " + str(flux_count) + " FLUX visuals planned "
+              "(~" + str(round(per_duration, 1)) + "s each, target=" + str(round(target_duration, 1)) + "s)")
         return visuals
 
     def generate_video(self, niche=None, analytics_data=None, used_concepts=None):
         scenario, scenario_index = self._get_next_scenario()
+        forced_angle = random.choice(FORCED_ANGLES)
+        title_style = random.choice(TITLE_STYLES)
 
         prompt = (
             "You are writing a voiceover script for a YouTube Shorts video about psychology and "
             "self-respect tactics. The video teaches people how to respond with confidence when "
             "someone treats them badly.\n\n"
             "SCENARIO TEMPLATE: " + scenario + "\n\n"
-            "IMPORTANT: This exact scenario template has been used before. You MUST create a "
-            "COMPLETELY FRESH angle, tactic, and hook for it. Think of a NEW psychological insight, "
-            "a different tactical approach, or an unexpected perspective that hasn't been covered. "
-            "The situation is the same but the lesson, the tactic name, and the advice must be "
-            "original and different from any previous video on this topic.\n\n"
-            "Some angles to consider (pick one that feels fresh and unexpected):\n"
-            "- The counterintuitive response most people would never think of\n"
-            "- The psychological reason WHY people do this (and how knowing it gives you power)\n"
-            "- The one thing you should NEVER do in this situation (and what to do instead)\n"
-            "- The long-term strategy vs the short-term emotional reaction\n"
-            "- What your response reveals about YOU vs what it reveals about THEM\n\n"
-            "SCRIPT RULES — STRICT 4-PART STRUCTURE, TOTAL 25-30 SECONDS (roughly 70-85 words):\n"
+            "MANDATORY ANGLE — you MUST build the entire script around this specific angle, not "
+            "a generic summary of the topic:\n\"" + forced_angle + "\"\n\n"
+            "MANDATORY TITLE STYLE — the title must follow this exact structural style:\n"
+            + title_style + "\n\n"
+            "This scenario template may have been used before with a different angle. Your script "
+            "must feel like a genuinely different video — different tactic name, different specific "
+            "advice, different wording throughout. Do not reuse generic phrases like 'take back "
+            "control' or 'remove their power' — find fresh, specific language.\n\n"
+            "SCRIPT RULES — STRICT 4-PART STRUCTURE, TOTAL 25-35 SECONDS (roughly 75-95 words):\n"
             "1. HOOK (0-6s, 1-2 short sentences): State the exact situation bluntly. Must instantly "
             "make the viewer think 'this is literally happening to me right now'.\n"
-            "2. CURIOSITY GAP (6-10s, 1-2 short sentences): Say that most people respond the wrong "
+            "2. CURIOSITY GAP (6-11s, 1-2 short sentences): Say that most people respond the wrong "
             "way and it backfires. Do NOT reveal the solution yet.\n"
-            "3. SOLUTION (10-23s, 3-4 punchy sentences): Deliver the actual tactic clearly and "
-            "specifically. Concrete, actionable, expert-level insight.\n"
-            "4. CLOSING LINE (23-29s, 1 short sentence): Sharp, memorable, slightly dark. Quotable.\n\n"
+            "3. SOLUTION (11-28s, 3-5 punchy sentences): Deliver the actual tactic clearly and "
+            "specifically, built around the mandatory angle above. Concrete, actionable, "
+            "expert-level insight.\n"
+            "4. CLOSING LINE (28-34s, 1 short sentence): Sharp, memorable, slightly dark. Quotable.\n\n"
             "- Tone: calm, controlled, slightly dark — a strategist, not a cheerleader.\n"
             "- Use 'you' directly. Short sentences. No filler words.\n"
             "- Do NOT use 'manipulate' or 'manipulation'.\n"
-            "- Aim for the FULL 25-30 seconds — 70-85 words minimum.\n\n"
-            "Return ONLY this JSON, no markdown:\n"
+            "- Aim for the FULL 25-35 seconds — 75-95 words, do not undershoot.\n\n"
+            "Return ONLY this JSON, no markdown, no commentary before or after:\n"
             "{\n"
-            "  \"title\": \"under 50 chars, intriguing #Shorts\",\n"
+            "  \"title\": \"under 50 chars, following the mandatory title style above, #Shorts\",\n"
             "  \"format\": \"PSYCHOLOGY\",\n"
-            "  \"tactic_name\": \"your original tactic name\",\n"
+            "  \"tactic_name\": \"your original tactic name, different from generic ones\",\n"
             "  \"script\": \"the full voiceover script ready to be read aloud\",\n"
             "  \"description\": \"#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect\",\n"
             "  \"tags\": [\"psychology\", \"selfrespect\", \"mindset\", \"shorts\", \"viral\", \"confidence\", \"relationships\", \"emotionalintelligence\", \"growth\", \"respect\"]\n"
@@ -206,7 +241,6 @@ class ContentAgent:
         """Claude ciktisindan JSON'u guvenli sekilde cikarir"""
         content = content.strip()
 
-        # Markdown blogu varsa temizle
         if "```" in content:
             parts = content.split("```")
             for part in parts:
@@ -217,7 +251,6 @@ class ContentAgent:
                     content = cleaned
                     break
 
-        # Ilk { ile son } arasini al (Claude bazen aciklama ekler)
         start = content.find("{")
         end = content.rfind("}")
         if start != -1 and end != -1 and end > start:
@@ -228,7 +261,6 @@ class ContentAgent:
     def _call_claude(self, prompt, scenario, scenario_index):
         video_data = None
 
-        # 2 deneme: ilk deneme basarisizsa Claude'a tekrar sor
         for attempt in range(2):
             try:
                 response = self.client.messages.create(
@@ -239,7 +271,6 @@ class ContentAgent:
                 content = response.content[0].text
                 video_data = self._extract_json(content)
 
-                # Zorunlu alanlar var mi kontrol et
                 if video_data.get("title") and video_data.get("script"):
                     break
                 else:
@@ -250,7 +281,6 @@ class ContentAgent:
                 video_data = None
 
         if video_data is None:
-            # Dinamik fallback - her seferinde farkli olsun
             print("WARNING: Using fallback content (Claude JSON failed twice)")
             fallback_tactics = [
                 ("The Strategic Pause", "go completely silent and let the silence do the talking"),
