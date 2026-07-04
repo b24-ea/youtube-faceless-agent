@@ -85,7 +85,7 @@ class ProductionAgent:
     def add_music_to_video(self, video_path, music_path):
         try:
             output_path = os.path.join(self.output_dir, "final_with_music.mp4")
-            # Voiceover net duyulsun diye muzik cok kisik (0.12) caliyor
+            # Voiceover net duyulsun diye muzik kisik (0.25) caliyor
             cmd = (
                 "ffmpeg -y -i " + video_path + " "
                 "-stream_loop -1 -i " + music_path + " "
