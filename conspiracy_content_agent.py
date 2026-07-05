@@ -8,10 +8,10 @@ from datetime import datetime
 # monetize edilen konular. Guncel saglik/asi/secim gibi hassas konulardan kaciniliyor.
 CONSPIRACY_TOPICS = [
     "Area 51 and the alleged extraterrestrial cover-up",
-    "The Montauk Project time experiments",
     "The MKUltra mind control program",
     "The Denver International Airport murals and underground rumors",
     "The Dulce Base underground facility theory",
+    "The Montauk Project time experiments",
     "The Majestic 12 declassified documents",
     "Project Blue Book and the UFO investigations",
     "The Philadelphia Experiment",
@@ -144,7 +144,7 @@ class ConspiracyContentAgent:
             "16:9 landscape, no readable text/logos, no real identifiable people, based on the "
             "ATMOSPHERE mood (redacted documents, archives, shadowy government buildings, foggy "
             "military sites, dim interrogation rooms).\n"
-            "- 10 FLUX still image prompts: photorealistic moody documentary-style stills, same "
+            "- 5 FLUX still image prompts: photorealistic moody documentary-style stills, same "
             "dark atmosphere, 16:9 landscape, no readable text/logos, no real identifiable people.\n"
             "- 14 stock footage search queries: short 2-4 word generic search terms for real stock "
             "footage that would fit a documentary about this topic (e.g. 'old newspaper archive', "
@@ -164,7 +164,7 @@ class ConspiracyContentAgent:
             "  \"title\": \"under 70 chars, following the mandatory title style above\",\n"
             "  \"script\": \"the full 1100-1300 word narration script as one continuous text\",\n"
             "  \"veo_prompts\": [\"...\", \"...\", \"...\", \"...\"],\n"
-            "  \"flux_prompts\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"],\n"
+            "  \"flux_prompts\": [\"...\", \"...\", \"...\", \"...\", \"...\"],\n"
             "  \"stock_queries\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"],\n"
             "  \"thumbnail_prompt\": \"one detailed image prompt for the cover thumbnail\",\n"
             "  \"description\": \"2-3 sentence description mentioning this is a theory/documentary, plus #conspiracy #mystery #declassified #documentary\",\n"
@@ -214,7 +214,7 @@ class ConspiracyContentAgent:
                     "abandoned military hallway at night, flickering lights, slow dolly, 16:9",
                     "foggy military airfield at night, distant hangar silhouette, slow pan, 16:9"
                 ],
-                "flux_prompts": [ATMOSPHERE_SCENES[i % len(ATMOSPHERE_SCENES)] for i in range(10)],
+                "flux_prompts": [ATMOSPHERE_SCENES[i % len(ATMOSPHERE_SCENES)] for i in range(5)],
                 "stock_queries": [
                     "old newspaper archive", "military base fence", "vintage typewriter",
                     "foggy forest road", "government building exterior", "filing cabinet documents",
