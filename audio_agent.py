@@ -16,51 +16,62 @@ class AudioAgent:
         ElevenLabs ile ses uretir ve kelime kelime zamanlama bilgisi doner.
         Returns: (audio_path, duration_seconds, word_timings) ya da (None, 0, [])
         """
-        try:
-            audio_path = os.path.join(self.output_dir, "voiceover.mp3")
-            url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "/with-timestamps"
+        audio_path = os.path.join(self.output_dir, "voiceover.mp3")
+        url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "/with-timestamps"
 
-            headers = {
-                "xi-api-key": self.api_key,
-                "Content-Type": "application/json"
+        headers = {
+            "xi-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+        body = {
+            "text": script_text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.65,
+                "similarity_boost": 0.75,
+                "style": 0.4,
+                "use_speaker_boost": True
             }
-            body = {
-                "text": script_text,
-                "model_id": "eleven_multilingual_v2",
-                "voice_settings": {
-                    "stability": 0.65,
-                    "similarity_boost": 0.75,
-                    "style": 0.4,
-                    "use_speaker_boost": True
-                }
-            }
+        }
 
-            r = requests.post(url, headers=headers, json=body, timeout=60)
-            if r.status_code != 200:
-                print("ElevenLabs error: " + str(r.status_code) + " " + r.text[:200])
+        # Uzun scriptler (uzun format videolar) icin ElevenLabs uretimi 60sn'yi
+        # asabiliyor, bu yuzden timeout 300sn'ye cikarildi + 2 deneme hakki eklendi.
+        for attempt in range(2):
+            try:
+                r = requests.post(url, headers=headers, json=body, timeout=300)
+                if r.status_code != 200:
+                    print("ElevenLabs error: " + str(r.status_code) + " " + r.text[:200])
+                    if attempt == 0:
+                        print("Retrying voiceover generation...")
+                        continue
+                    return None, 0, []
+
+                data = r.json()
+                import base64
+                audio_bytes = base64.b64decode(data["audio_base64"])
+                with open(audio_path, "wb") as f:
+                    f.write(audio_bytes)
+
+                alignment = data.get("alignment", {})
+                word_timings = self._build_word_timings(alignment)
+
+                duration = 0
+                if word_timings:
+                    duration = word_timings[-1]["end"]
+                else:
+                    duration = self._get_audio_duration(audio_path)
+
+                print("Voiceover generated: " + str(round(duration, 1)) + "s, " + str(len(word_timings)) + " words")
+                return audio_path, duration, word_timings
+
+            except Exception as e:
+                print("Audio generation error: " + str(e))
+                if attempt == 0:
+                    print("Retrying voiceover generation...")
+                    continue
                 return None, 0, []
 
-            data = r.json()
-            import base64
-            audio_bytes = base64.b64decode(data["audio_base64"])
-            with open(audio_path, "wb") as f:
-                f.write(audio_bytes)
-
-            alignment = data.get("alignment", {})
-            word_timings = self._build_word_timings(alignment)
-
-            duration = 0
-            if word_timings:
-                duration = word_timings[-1]["end"]
-            else:
-                duration = self._get_audio_duration(audio_path)
-
-            print("Voiceover generated: " + str(round(duration, 1)) + "s, " + str(len(word_timings)) + " words")
-            return audio_path, duration, word_timings
-
-        except Exception as e:
-            print("Audio generation error: " + str(e))
-            return None, 0, []
+        return None, 0, []
 
     def _build_word_timings(self, alignment):
         """ElevenLabs karakter bazli zamanlamasini kelime bazli zamanlamaya cevirir"""
