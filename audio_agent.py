@@ -11,13 +11,15 @@ class AudioAgent:
         # Adam - stabil, derin, otoriter erkek sesi (her hesapta varsayilan olarak bulunur)
         self.voice_id = "pNInz6obpgDQGcFmaJgB"
 
-    def generate_voiceover(self, script_text):
+    def generate_voiceover(self, script_text, voice_id=None):
         """
         ElevenLabs ile ses uretir ve kelime kelime zamanlama bilgisi doner.
+        voice_id verilmezse varsayilan (Adam) kullanilir - psychology shorts icin budur.
         Returns: (audio_path, duration_seconds, word_timings) ya da (None, 0, [])
         """
         audio_path = os.path.join(self.output_dir, "voiceover.mp3")
-        url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "/with-timestamps"
+        chosen_voice = voice_id or self.voice_id
+        url = "https://api.elevenlabs.io/v1/text-to-speech/" + chosen_voice + "/with-timestamps"
 
         headers = {
             "xi-api-key": self.api_key,
