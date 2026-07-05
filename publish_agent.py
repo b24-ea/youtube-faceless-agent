@@ -15,7 +15,6 @@ class PublishAgent:
         ]
 
     def upload(self, video_path, video_data):
-        """Shorts icin - gun kisitlamasi yok, her calismada yukler"""
         youtube = self._get_youtube_client()
         title = video_data.get("title", "Video")
         if "#Shorts" not in title:
@@ -42,10 +41,6 @@ class PublishAgent:
         return video_id
 
     def upload_long_form(self, video_path, video_data):
-        """
-        Uzun format (8dk) komplo teorisi videolari icin.
-        #Shorts etiketi YOK, farkli kategori (Entertainment=24 veya People&Blogs=22).
-        """
         try:
             youtube = self._get_youtube_client()
             title = video_data.get("title", "Untitled")
@@ -55,7 +50,7 @@ class PublishAgent:
                     "title": title,
                     "description": video_data.get("description", ""),
                     "tags": video_data.get("tags", []),
-                    "categoryId": "24"  # Entertainment
+                    "categoryId": "24"
                 },
                 "status": {
                     "privacyStatus": "public",
@@ -72,6 +67,21 @@ class PublishAgent:
         except Exception as e:
             print("Long-form upload error: " + str(e))
             return None
+
+    def set_thumbnail(self, video_id, thumbnail_path):
+        if not video_id or not thumbnail_path or not os.path.exists(thumbnail_path):
+            print("Thumbnail skipped: missing video_id or thumbnail file")
+            return False
+
+        try:
+            youtube = self._get_youtube_client()
+            media = MediaFileUpload(thumbnail_path, mimetype="image/jpeg")
+            youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
+            print("Thumbnail set for video: " + video_id)
+            return True
+        except Exception as e:
+            print("Thumbnail set error (channel may need phone verification): " + str(e))
+            return False
 
     def _get_youtube_client(self):
         token_b64 = os.environ.get("YOUTUBE_TOKEN")
