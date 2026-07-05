@@ -7,11 +7,11 @@ from datetime import datetime
 # Gercek/bilinen, genelde "teori/eglence" olarak islenen ve YouTube'da yaygin
 # monetize edilen konular. Guncel saglik/asi/secim gibi hassas konulardan kaciniliyor.
 CONSPIRACY_TOPICS = [
+    "The Montauk Project time experiments",
     "Area 51 and the alleged extraterrestrial cover-up",
     "The MKUltra mind control program",
     "The Denver International Airport murals and underground rumors",
     "The Dulce Base underground facility theory",
-    "The Montauk Project time experiments",
     "The Majestic 12 declassified documents",
     "Project Blue Book and the UFO investigations",
     "The Philadelphia Experiment",
@@ -152,10 +152,13 @@ class ConspiracyContentAgent:
             "exterior', 'filing cabinet documents', 'night surveillance camera', 'clock ticking "
             "close up', 'old film grain', 'abandoned hallway', 'declassified stamp paper', "
             "'radio static tv'). Keep them generic and safe (no brand names, no real people's names).\n\n"
-            "ALSO write a thumbnail_prompt: one striking, dramatic image description for the video's "
-            "cover thumbnail, directly related to this specific episode's topic and angle. Dark "
-            "documentary atmosphere, high detail, visually intriguing enough to make someone click, "
-            "16:9 landscape, no readable text/logos, no real identifiable people.\n\n"
+            "ALSO write a thumbnail_prompt: after you decide the title, write an image description "
+            "that VISUALLY REFLECTS THE SPECIFIC CLAIM IN THAT TITLE — not just the general topic. "
+            "If the title makes a specific claim or promise, the thumbnail must depict a scene that "
+            "directly represents it, so someone who reads the title and sees the thumbnail together "
+            "immediately understands the connection. Dark documentary atmosphere, high detail, "
+            "visually intriguing enough to make someone click, 16:9 landscape, no readable text/logos, "
+            "no real identifiable people.\n\n"
             "Return ONLY this JSON, no markdown, no commentary before or after:\n"
             "{\n"
             "  \"title\": \"under 70 chars, following the mandatory title style above\",\n"
