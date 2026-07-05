@@ -7,8 +7,8 @@ from datetime import datetime
 # Gercek/bilinen, genelde "teori/eglence" olarak islenen ve YouTube'da yaygin
 # monetize edilen konular. Guncel saglik/asi/secim gibi hassas konulardan kaciniliyor.
 CONSPIRACY_TOPICS = [
-    "The Montauk Project time experiments",
     "Area 51 and the alleged extraterrestrial cover-up",
+    "The Montauk Project time experiments",
     "The MKUltra mind control program",
     "The Denver International Airport murals and underground rumors",
     "The Dulce Base underground facility theory",
