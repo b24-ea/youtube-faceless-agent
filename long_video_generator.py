@@ -163,6 +163,31 @@ class LongVideoGenerator:
             print("  FLUX error: " + str(e))
         return False
 
+    def generate_thumbnail(self, thumbnail_prompt):
+        """Video konusuna ozel, YouTube standardi 1280x720 (16:9) kapak resmi uretir"""
+        try:
+            thumb_path = os.path.join(self.output_dir, "thumbnail.jpg")
+            result = fal_client.subscribe(
+                "fal-ai/flux-pro",
+                arguments={
+                    "prompt": thumbnail_prompt + " High detail, dramatic composition, documentary thumbnail style, 16:9 landscape.",
+                    "image_size": "landscape_16_9",
+                    "num_images": 1,
+                    "safety_tolerance": "5"
+                }
+            )
+            if result and result.get("images") and len(result["images"]) > 0:
+                image_url = result["images"][0]["url"]
+                r = requests.get(image_url, timeout=30)
+                img = Image.open(BytesIO(r.content))
+                img = img.resize((1280, 720), Image.LANCZOS)
+                img.save(thumb_path, "JPEG", quality=95)
+                print("Thumbnail generated")
+                return thumb_path
+        except Exception as e:
+            print("Thumbnail generation error: " + str(e))
+        return None
+
     def _image_to_video_kenburns(self, image_path, video_path, duration):
         try:
             fps = 24
