@@ -20,7 +20,7 @@ class LongVideoGenerator:
         Ilk gorsel her zaman VEO (guclu acilis hook'u icin).
         """
         veo_prompts = video_data.get("veo_prompts", [])[:4]
-        flux_prompts = video_data.get("flux_prompts", [])[:10]
+        flux_prompts = video_data.get("flux_prompts", [])[:5]
         stock_queries = video_data.get("stock_queries", [])
 
         veo_duration = 8
