@@ -7,69 +7,41 @@ from io import BytesIO
 
 
 class LongVideoGenerator:
-    def __init__(self, stock_agent):
+    def __init__(self):
         self.output_dir = "output"
         fal_key = os.environ.get("FAL_API_KEY", "")
         os.environ["FAL_KEY"] = fal_key
         os.makedirs(self.output_dir, exist_ok=True)
-        self.stock_agent = stock_agent
 
     def build_visual_plan(self, video_data, target_duration):
         """
-        3-4 VEO + 10 FLUX + geri kalani stock ile 16:9 gorsel plani olusturur.
-        Ilk gorsel her zaman VEO (guclu acilis hook'u icin).
+        Claude'un urettigi 'visuals' listesini (kronolojik sirada, hikayeyle eslesen)
+        alir ve her ogeye sure atar. VEO sabit 8sn, FLUX kalan sureyi paylasir.
+        Sira DEGISTIRILMEZ - hikayeyle senkron kalmasi gerekiyor.
         """
-        veo_prompts = video_data.get("veo_prompts", [])[:4]
-        flux_prompts = video_data.get("flux_prompts", [])[:5]
-        stock_queries = video_data.get("stock_queries", [])
+        visuals = video_data.get("visuals", [])
+        if not visuals:
+            return []
+
+        veo_items = [v for v in visuals if v.get("type") == "VEO"]
+        flux_items = [v for v in visuals if v.get("type") == "FLUX"]
 
         veo_duration = 8
-        flux_duration = 15
-
-        veo_total = len(veo_prompts) * veo_duration
-        flux_total = len(flux_prompts) * flux_duration
-        remaining = max(0, target_duration - veo_total - flux_total)
-
-        stock_clip_duration = 12
-        stock_count = max(4, round(remaining / stock_clip_duration)) if stock_queries else 0
+        veo_total = len(veo_items) * veo_duration
+        remaining = max(0, target_duration - veo_total)
+        flux_duration = round(remaining / len(flux_items), 1) if flux_items else 0
+        flux_duration = max(6, flux_duration)  # cok kisa olmasin
 
         plan = []
-        for p in veo_prompts:
-            plan.append({"type": "VEO", "prompt": p, "duration": veo_duration})
-        for p in flux_prompts:
-            plan.append({"type": "FLUX", "prompt": p, "duration": flux_duration})
-        for i in range(stock_count):
-            query = stock_queries[i % len(stock_queries)] if stock_queries else "dark mystery atmosphere"
-            plan.append({"type": "STOCK", "prompt": query, "duration": stock_clip_duration})
+        for v in visuals:
+            duration = veo_duration if v.get("type") == "VEO" else flux_duration
+            plan.append({"type": v.get("type", "FLUX"), "prompt": v.get("prompt", "dark horror scene"), "duration": duration})
 
-        # Ilk oge VEO olsun (hook), geri kalanini karistir ama ayni tip 3 kere ust uste gelmesin
-        first = None
-        for i, item in enumerate(plan):
-            if item["type"] == "VEO":
-                first = plan.pop(i)
-                break
-        rest = plan
-        random.shuffle(rest)
-
-        ordered = [first] if first else []
-        last_types = []
-        pool = rest[:]
-        while pool:
-            placed = False
-            for i, item in enumerate(pool):
-                if len(last_types) < 2 or not (last_types[-1] == last_types[-2] == item["type"]):
-                    ordered.append(item)
-                    last_types.append(item["type"])
-                    pool.pop(i)
-                    placed = True
-                    break
-            if not placed:
-                # kural saglanamiyorsa ilkini ekle
-                ordered.append(pool.pop(0))
-
-        print("Visual plan: " + str(len(veo_prompts)) + " VEO + " + str(len(flux_prompts)) +
-              " FLUX + " + str(stock_count) + " STOCK (~" + str(round(target_duration, 1)) + "s target)")
-        return ordered
+        total_planned = sum(p["duration"] for p in plan)
+        print("Visual plan: " + str(len(veo_items)) + " VEO + " + str(len(flux_items)) +
+              " FLUX, in story order (~" + str(round(total_planned, 1)) + "s planned, target=" +
+              str(round(target_duration, 1)) + "s)")
+        return plan
 
     def generate(self, visual_plan, target_duration):
         clip_paths = []
@@ -88,21 +60,10 @@ class LongVideoGenerator:
                     success = self._generate_veo_clip(prompt, clip_path, duration)
                 if not success:
                     success = self._generate_flux_image(prompt, clip_path, duration)
-            elif visual_type == "FLUX":
+            else:
                 success = self._generate_flux_image(prompt, clip_path, duration)
                 if not success:
                     success = self._generate_flux_image(prompt, clip_path, duration)
-            else:  # STOCK
-                result_path = self.stock_agent.fetch_stock_clip(prompt, duration, i)
-                if result_path:
-                    clip_path = result_path
-                    success = True
-                else:
-                    # stock hem video hem resim basarisiz olursa FLUX'a dus
-                    success = self._generate_flux_image(
-                        "dark documentary atmosphere, government archive mood, cinematic shadows",
-                        clip_path, duration
-                    )
 
             if success:
                 clip_paths.append(clip_path)
@@ -121,7 +82,7 @@ class LongVideoGenerator:
             result = fal_client.subscribe(
                 "fal-ai/veo3/fast",
                 arguments={
-                    "prompt": prompt + " Cinematic documentary style, dark and mysterious, 16:9 landscape, no readable text, no visible faces.",
+                    "prompt": prompt + " Cinematic horror, dark and dreadful, 16:9 landscape, no readable text, no visible clear faces.",
                     "aspect_ratio": "16:9",
                     "duration": str(veo_pick) + "s",
                     "generate_audio": False
@@ -145,7 +106,7 @@ class LongVideoGenerator:
             result = fal_client.subscribe(
                 "fal-ai/flux-pro",
                 arguments={
-                    "prompt": prompt + " Photorealistic documentary photography, cold desaturated tones, cinematic shadows, 16:9 landscape, no readable text, no visible faces.",
+                    "prompt": prompt + " Photorealistic horror cinematography, cold desaturated tones, cinematic shadows, 16:9 landscape, no readable text, no visible clear faces.",
                     "image_size": "landscape_16_9",
                     "num_images": 1,
                     "safety_tolerance": "5"
@@ -164,13 +125,12 @@ class LongVideoGenerator:
         return False
 
     def generate_thumbnail(self, thumbnail_prompt):
-        """Video konusuna ozel, YouTube standardi 1280x720 (16:9) kapak resmi uretir"""
         try:
             thumb_path = os.path.join(self.output_dir, "thumbnail.jpg")
             result = fal_client.subscribe(
                 "fal-ai/flux-pro",
                 arguments={
-                    "prompt": thumbnail_prompt + " High detail, dramatic composition, documentary thumbnail style, 16:9 landscape.",
+                    "prompt": thumbnail_prompt + " High detail, dramatic composition, horror thumbnail style, 16:9 landscape.",
                     "image_size": "landscape_16_9",
                     "num_images": 1,
                     "safety_tolerance": "5"
@@ -281,68 +241,103 @@ class LongVideoGenerator:
             if gap <= 1.5:
                 return video_path
 
-            print("Visual gap of " + str(round(gap, 1)) + "s, looping clips to fill")
-            concat_file = os.path.join(self.output_dir, "concat_loop.txt")
-            looped_path = os.path.join(self.output_dir, "visuals_looped.mp4")
-
-            with open(concat_file, "w") as f:
-                f.write("file '" + os.path.abspath(video_path) + "'\n")
-                remaining = gap
-                idx = 0
-                while remaining > 0 and source_clips:
-                    clip = source_clips[idx % len(source_clips)]
-                    f.write("file '" + os.path.abspath(clip) + "'\n")
-                    remaining -= 12
-                    idx += 1
-                    if idx > 30:
-                        break
-
-            os.system(
-                "ffmpeg -y -f concat -safe 0 -i " + concat_file +
-                " -c:v libx264 -r 24 -pix_fmt yuv420p " + looped_path
+            print("Visual gap of " + str(round(gap, 1)) + "s, extending last clip to fill")
+            padded_path = video_path.replace(".mp4", "_padded.mp4")
+            cmd = (
+                "ffmpeg -y -i " + video_path +
+                " -vf \"tpad=stop_mode=clone:stop_duration=" + str(round(gap, 2)) + "\" " +
+                "-c:v libx264 -pix_fmt yuv420p " + padded_path
             )
-
-            if os.path.exists(looped_path):
-                trimmed_path = looped_path.replace(".mp4", "_final.mp4")
-                cmd = (
-                    "ffmpeg -y -i " + looped_path +
-                    " -t " + str(round(target_duration, 2)) +
-                    " -c:v libx264 -pix_fmt yuv420p " + trimmed_path
-                )
-                os.system(cmd)
-                return trimmed_path if os.path.exists(trimmed_path) else looped_path
+            os.system(cmd)
+            if os.path.exists(padded_path):
+                return padded_path
             return video_path
         except Exception as e:
             print("Duration fill error: " + str(e))
         return video_path
 
-    def add_voiceover_and_music(self, video_path, audio_path, music_path=None):
-        """Ses ekler, altyazi YOK (kullanici istegi). Muzik varsa kisik seviyede karistirir."""
+    def add_voiceover_and_captions(self, video_path, audio_path, word_timings, music_path=None, total_duration=None):
+        """Ses + kelime kelime altyazi (16:9, 1920x1080) + istege bagli muzik ekler"""
         try:
             output_path = os.path.join(self.output_dir, "video_with_voice.mp4")
+
+            if total_duration is None and word_timings:
+                total_duration = word_timings[-1]["end"] + 0.5
+
+            ass_path = os.path.join(self.output_dir, "captions.ass")
+            self._write_ass_captions(word_timings, ass_path)
+            ass_escaped = ass_path.replace(":", "\\:").replace("\\", "/")
+
             cmd = (
                 "ffmpeg -y -i " + video_path + " -i " + audio_path + " "
-                "-map 0:v -map 1:a -c:v copy -c:a aac -shortest " + output_path
+                "-vf \"ass=" + ass_escaped + "\" "
+                "-map 0:v -map 1:a -c:v libx264 -c:a aac -pix_fmt yuv420p -shortest " + output_path
             )
             result = os.system(cmd)
             if not (result == 0 and os.path.exists(output_path)):
-                print("Voiceover add failed")
+                print("Caption burn failed, adding voice only")
+                cmd2 = (
+                    "ffmpeg -y -i " + video_path + " -i " + audio_path + " "
+                    "-map 0:v -map 1:a -c:v copy -c:a aac -shortest " + output_path
+                )
+                os.system(cmd2)
+
+            if not os.path.exists(output_path):
                 return video_path
 
             if not music_path:
                 return output_path
 
             final_path = os.path.join(self.output_dir, "final_with_music.mp4")
-            cmd2 = (
+            cmd3 = (
                 "ffmpeg -y -i " + output_path + " -stream_loop -1 -i " + music_path + " "
                 "-filter_complex \"[1:a]volume=0.15[bg];[0:a]volume=1.0[orig];"
                 "[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[out]\" "
                 "-map 0:v -map \"[out]\" -c:v copy -c:a aac -shortest " + final_path
             )
-            result2 = os.system(cmd2)
+            result2 = os.system(cmd3)
             if result2 == 0 and os.path.exists(final_path):
                 return final_path
             return output_path
         except Exception as e:
-            print("Voiceover/music error: " + str(e))
+            print("Voiceover/caption error: " + str(e))
         return video_path
+
+    def _write_ass_captions(self, word_timings, ass_path):
+        """Kelime kelime yigilan altyazi - 1920x1080 (16:9) icin olceklendi"""
+        header = (
+            "[Script Info]\n"
+            "ScriptType: v4.00+\n"
+            "PlayResX: 1920\n"
+            "PlayResY: 1080\n"
+            "\n"
+            "[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+            "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, "
+            "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+            "Style: Caption,Arial Black,54,&H00FFFFFF,&H000000FF,&H0000E6FF,&H00000000,1,0,0,0,100,100,0,0,"
+            "1,3,0,2,100,100,90,1\n"
+            "\n"
+            "[Events]\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        )
+
+        events = []
+        for w in word_timings:
+            start = self._format_ass_time(w["start"])
+            end = self._format_ass_time(w["end"])
+            word_text = w["word"].upper().replace("\n", " ")
+            events.append(
+                "Dialogue: 0," + start + "," + end + ",Caption,,0,0,0,,"
+                "{\\fad(50,50)\\blur2}" + word_text
+            )
+
+        with open(ass_path, "w", encoding="utf-8") as f:
+            f.write(header)
+            f.write("\n".join(events))
+
+    def _format_ass_time(self, seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = seconds % 60
+        return "{:01d}:{:02d}:{:05.2f}".format(h, m, s)
