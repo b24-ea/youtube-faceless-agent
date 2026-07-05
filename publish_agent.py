@@ -15,7 +15,7 @@ class PublishAgent:
         ]
 
     def upload(self, video_path, video_data):
-        # Gunluk 2x paylasim icin gun kisitlamasi kaldirildi - her calismada yukler
+        """Shorts icin - gun kisitlamasi yok, her calismada yukler"""
         youtube = self._get_youtube_client()
         title = video_data.get("title", "Video")
         if "#Shorts" not in title:
@@ -40,6 +40,38 @@ class PublishAgent:
         video_id = response["id"]
         print("Uploaded: https://youtube.com/watch?v=" + video_id)
         return video_id
+
+    def upload_long_form(self, video_path, video_data):
+        """
+        Uzun format (8dk) komplo teorisi videolari icin.
+        #Shorts etiketi YOK, farkli kategori (Entertainment=24 veya People&Blogs=22).
+        """
+        try:
+            youtube = self._get_youtube_client()
+            title = video_data.get("title", "Untitled")
+
+            body = {
+                "snippet": {
+                    "title": title,
+                    "description": video_data.get("description", ""),
+                    "tags": video_data.get("tags", []),
+                    "categoryId": "24"  # Entertainment
+                },
+                "status": {
+                    "privacyStatus": "public",
+                    "selfDeclaredMadeForKids": False
+                }
+            }
+
+            media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True)
+            request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+            response = request.execute()
+            video_id = response["id"]
+            print("Uploaded (long-form): https://youtube.com/watch?v=" + video_id)
+            return video_id
+        except Exception as e:
+            print("Long-form upload error: " + str(e))
+            return None
 
     def _get_youtube_client(self):
         token_b64 = os.environ.get("YOUTUBE_TOKEN")
