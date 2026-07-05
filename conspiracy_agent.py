@@ -3,32 +3,35 @@ import anthropic
 from datetime import datetime
 from conspiracy_content_agent import ConspiracyContentAgent
 from audio_agent import AudioAgent
-from stock_agent import StockAgent
 from long_video_generator import LongVideoGenerator
 from production_agent import ProductionAgent
 from publish_agent import PublishAgent
 
 
-TARGET_DURATION_SECONDS = 480  # 8 dakika hedef
+TARGET_DURATION_SECONDS = 300  # 5 dakika hedef
+
+# Daha kalin, yogun, urkutucu erkek sesi (ElevenLabs premade "Arnold" - dogal olarak
+# derin/yogun tonu ile bilinir). Psychology Shorts'un sesini (Adam) etkilemez, ayri parametre.
+CREEPY_VOICE_ID = "VR6AewLTigWG4xSOukaG"
 
 
 def main():
     print("\n" + "="*50)
-    print("Conspiracy Long-Form Agent Started: " + str(datetime.now()))
+    print("Creepy Horror Long-Form Agent Started: " + str(datetime.now()))
     print("="*50 + "\n")
 
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     content_agent = ConspiracyContentAgent(client)
     audio_agent = AudioAgent()
-    stock_agent = StockAgent()
-    video_gen = LongVideoGenerator(stock_agent)
+    video_gen = LongVideoGenerator()
     production = ProductionAgent()
     publisher = PublishAgent()
 
-    print("Generating script and visual plan...")
+    print("Generating horror story and visual sequence...")
     video_data = content_agent.generate_video()
     print("Title: " + str(video_data.get("title", "N/A")))
-    print("Topic: " + str(video_data.get("topic", "N/A")))
+    print("Premise: " + str(video_data.get("topic", "N/A")))
+    print("Entity: " + str(video_data.get("entity_name", "N/A")))
 
     script = video_data.get("script", "")
     if not script:
@@ -36,17 +39,20 @@ def main():
         return
     print("Script length: " + str(len(script.split())) + " words")
 
-    print("\nGenerating voiceover with ElevenLabs...")
-    audio_path, audio_duration, word_timings = audio_agent.generate_voiceover(script)
+    print("\nGenerating voiceover with ElevenLabs (deep eerie voice)...")
+    audio_path, audio_duration, word_timings = audio_agent.generate_voiceover(script, voice_id=CREEPY_VOICE_ID)
     if not audio_path:
         print("ERROR: Voiceover generation failed")
         return
 
-    target_duration = max(TARGET_DURATION_SECONDS - 30, audio_duration + 1)
+    target_duration = max(TARGET_DURATION_SECONDS - 20, audio_duration + 1)
     print("Target video duration: " + str(round(target_duration, 1)) + "s (audio: " + str(round(audio_duration, 1)) + "s)")
 
-    print("\nBuilding visual plan (3-4 VEO + 10 FLUX + stock)...")
+    print("\nBuilding visual plan (VEO3 + FLUX Pro only, story order)...")
     visual_plan = video_gen.build_visual_plan(video_data, target_duration)
+    if not visual_plan:
+        print("ERROR: No visual plan generated")
+        return
 
     print("\nDownloading background music...")
     music_path = production.get_background_music()
@@ -57,8 +63,10 @@ def main():
         print("ERROR: Visual generation failed")
         return
 
-    print("\nAdding voiceover and music (no captions)...")
-    video_path = video_gen.add_voiceover_and_music(visuals_path, audio_path, music_path)
+    print("\nAdding voiceover, captions, and music...")
+    video_path = video_gen.add_voiceover_and_captions(
+        visuals_path, audio_path, word_timings, music_path=music_path, total_duration=target_duration
+    )
 
     print("\nUploading to YouTube...")
     video_id = publisher.upload_long_form(video_path, video_data)
