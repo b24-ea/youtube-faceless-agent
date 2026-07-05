@@ -80,6 +80,13 @@ def main():
     if video_id and not str(video_id).startswith("SKIPPED"):
         print("Uploaded! Video ID: " + video_id)
         analytics.save_video_performance(video_id, "psychology", video_data)
+
+        thumbnail_prompt = video_data.get("thumbnail_prompt")
+        if thumbnail_prompt:
+            print("\nGenerating custom thumbnail...")
+            thumbnail_path = video_gen.generate_thumbnail(thumbnail_prompt)
+            if thumbnail_path:
+                publisher.set_thumbnail(video_id, thumbnail_path)
     else:
         print("Upload skipped")
 
