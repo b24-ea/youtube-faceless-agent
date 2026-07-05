@@ -7,6 +7,7 @@ from datetime import datetime
 # 30 senaryo sablonu - tarihe gore secilir, gunun saatine gore de kayar
 # boylece ayni gunde 2 video paylasilinca ikisi de farkli sablon alir
 SCENARIO_TEMPLATES = [
+    "someone ignores your messages or leaves you on read",
     "someone talks down to you or belittles you in front of others",
     "someone uses guilt to control your decisions",
     "someone gives you the silent treatment to punish you",
@@ -224,12 +225,18 @@ class ContentAgent:
             "- Use 'you' directly. Short sentences. No filler words.\n"
             "- Do NOT use 'manipulate' or 'manipulation'.\n"
             "- Aim for the FULL 25-35 seconds — 75-95 words, do not undershoot.\n\n"
+            "ALSO write a thumbnail_prompt: a single striking image description for the video's "
+            "cover thumbnail, directly related to this specific video's topic/tactic. Dark cinematic "
+            "atmosphere matching the horror visuals (cold desaturated tones, dramatic shadows), "
+            "16:9 landscape, no readable text, no visible faces, visually intriguing enough to make "
+            "someone click.\n\n"
             "Return ONLY this JSON, no markdown, no commentary before or after:\n"
             "{\n"
             "  \"title\": \"under 50 chars, following the mandatory title style above, #Shorts\",\n"
             "  \"format\": \"PSYCHOLOGY\",\n"
             "  \"tactic_name\": \"your original tactic name, different from generic ones\",\n"
             "  \"script\": \"the full voiceover script ready to be read aloud\",\n"
+            "  \"thumbnail_prompt\": \"one detailed image prompt for the cover thumbnail\",\n"
             "  \"description\": \"#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect\",\n"
             "  \"tags\": [\"psychology\", \"selfrespect\", \"mindset\", \"shorts\", \"viral\", \"confidence\", \"relationships\", \"emotionalintelligence\", \"growth\", \"respect\"]\n"
             "}"
@@ -310,6 +317,7 @@ class ContentAgent:
                     "It works because it removes the reward they were looking for. "
                     "No reaction, no reward. No reward, no repeat."
                 ),
+                "thumbnail_prompt": "dark cinematic close-up of a shadowy figure standing alone in a dim cold-toned room, dramatic lighting, mysterious atmosphere, 16:9, no visible face, no text",
                 "description": "#psychology #selfrespect #mindset #shorts #viral #confidence #relationships #emotionalintelligence #growth #respect",
                 "tags": ["psychology", "selfrespect", "mindset", "shorts", "viral", "confidence", "relationships", "emotionalintelligence", "growth", "respect"]
             }
