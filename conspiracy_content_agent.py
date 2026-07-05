@@ -152,6 +152,10 @@ class ConspiracyContentAgent:
             "exterior', 'filing cabinet documents', 'night surveillance camera', 'clock ticking "
             "close up', 'old film grain', 'abandoned hallway', 'declassified stamp paper', "
             "'radio static tv'). Keep them generic and safe (no brand names, no real people's names).\n\n"
+            "ALSO write a thumbnail_prompt: one striking, dramatic image description for the video's "
+            "cover thumbnail, directly related to this specific episode's topic and angle. Dark "
+            "documentary atmosphere, high detail, visually intriguing enough to make someone click, "
+            "16:9 landscape, no readable text/logos, no real identifiable people.\n\n"
             "Return ONLY this JSON, no markdown, no commentary before or after:\n"
             "{\n"
             "  \"title\": \"under 70 chars, following the mandatory title style above\",\n"
@@ -159,6 +163,7 @@ class ConspiracyContentAgent:
             "  \"veo_prompts\": [\"...\", \"...\", \"...\", \"...\"],\n"
             "  \"flux_prompts\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"],\n"
             "  \"stock_queries\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"],\n"
+            "  \"thumbnail_prompt\": \"one detailed image prompt for the cover thumbnail\",\n"
             "  \"description\": \"2-3 sentence description mentioning this is a theory/documentary, plus #conspiracy #mystery #declassified #documentary\",\n"
             "  \"tags\": [\"conspiracy\", \"mystery\", \"government\", \"declassified\", \"documentary\", \"unexplained\", \"darkhistory\", \"coldwar\", \"classified\", \"truestory\"]\n"
             "}"
@@ -214,6 +219,7 @@ class ConspiracyContentAgent:
                     "abandoned hallway", "declassified stamp paper", "radio static tv",
                     "dark storm clouds", "empty office night"
                 ],
+                "thumbnail_prompt": "dramatic dark government archive room with a single redacted document under harsh desk lamp light, cinematic shadows, mysterious atmosphere, 16:9, no text, no faces",
                 "description": "A look into one of history's most debated theories. #conspiracy #mystery #declassified #documentary",
                 "tags": ["conspiracy", "mystery", "government", "declassified", "documentary", "unexplained", "darkhistory", "coldwar", "classified", "truestory"]
             }
