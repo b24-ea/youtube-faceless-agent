@@ -7,8 +7,6 @@ from datetime import datetime
 # 30 senaryo sablonu - tarihe gore secilir, gunun saatine gore de kayar
 # boylece ayni gunde 2 video paylasilinca ikisi de farkli sablon alir
 SCENARIO_TEMPLATES = [
-    "someone ignores your messages or leaves you on read",
-    "someone talks down to you or belittles you in front of others",
     "someone uses guilt to control your decisions",
     "someone gives you the silent treatment to punish you",
     "someone constantly cancels plans last minute",
