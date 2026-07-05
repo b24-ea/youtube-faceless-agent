@@ -65,6 +65,13 @@ def main():
 
     if video_id:
         print("Uploaded! Video ID: " + video_id)
+
+        thumbnail_prompt = video_data.get("thumbnail_prompt")
+        if thumbnail_prompt:
+            print("\nGenerating custom thumbnail...")
+            thumbnail_path = video_gen.generate_thumbnail(thumbnail_prompt)
+            if thumbnail_path:
+                publisher.set_thumbnail(video_id, thumbnail_path)
     else:
         print("Upload failed")
 
